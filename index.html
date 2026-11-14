@@ -131,6 +131,26 @@ button{font:inherit;border:0;cursor:pointer;touch-action:manipulation}
 #app.visit #fabs, #app.visit #f-arcade, #app.visit #f-friends, #app.visit #goal{display:none}
 #fabsL button{width:44px;height:44px;font-size:20px} #fabsL{gap:8px}
 #fabs button{width:44px;height:44px;font-size:20px} #fabs{gap:8px}
+/* Moins de boutons à l'écran : un menu regroupe tout, la vue a son propre bouton */
+#f-chest,#f-season,#f-custom,#f-set,#f-arcade,#f-friends,#f-world{display:none!important}
+#fabsL:not(.open) #f-rot,#fabsL:not(.open) #f-tilt,#fabsL:not(.open) #f-home{display:none}
+#fabs button,#fabsL button{width:50px;height:50px;font-size:23px}
+#f-menu{position:relative;font-weight:800}
+#f-menu i{position:absolute;right:-3px;top:-3px;background:#d94a3a;color:#fff;font-size:11px;font-style:normal;font-weight:800;min-width:19px;height:19px;border-radius:10px;display:grid;place-items:center;padding:0 4px}
+#f-menu i:empty{display:none}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:2px}
+#sh-foot .mi{background:#f3ead2;border-radius:16px;padding:12px 4px 10px;font-size:27px;position:relative;line-height:1.1;text-decoration:none;color:var(--ink)}
+.mi span{display:block;font-size:12px;font-weight:700;margin-top:5px;color:var(--ink)}
+.mi i{position:absolute;right:8px;top:6px;background:#d94a3a;color:#fff;font-size:11px;font-style:normal;font-weight:800;min-width:19px;height:19px;border-radius:10px;display:grid;place-items:center;padding:0 4px}
+.mi i:empty{display:none}
+#joy,#pw{pointer-events:auto;cursor:pointer}
+#tuto{position:absolute;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:496px;margin:0 auto;background:var(--card);border-radius:20px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:12;display:none}
+#tuto.on{display:block}
+#tuto b{font-size:17px} #tuto p{margin:6px 0 12px;font-size:14px;line-height:1.5;color:#4a4034}
+#tuto div{display:flex;align-items:center;gap:10px} #tu-n{flex:1;text-align:center;font-size:12px;color:var(--muted)}
+#tu-skip{background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:8px 4px}
+#tuto .buy{min-width:120px}
+#app.tuto #fabs,#app.tuto #fabsL{display:none}
 </style>
 </head>
 <body>
@@ -158,6 +178,7 @@ button{font:inherit;border:0;cursor:pointer;touch-action:manipulation}
       <span class="chip" id="vis">👥 0/0</span>
       <span class="chip" id="flow">🚗 0/s</span>
       <span class="chip" id="joy">😀 50 %</span>
+      <span class="chip" id="pw">⚡ 0/10</span>
       <span class="chip" id="evchip" style="display:none"></span>
       <span class="chip" id="turbochip" style="display:none"></span>
     </div>
@@ -168,6 +189,7 @@ button{font:inherit;border:0;cursor:pointer;touch-action:manipulation}
   </div>
   <div id="fabs">
     <button id="f-boost" aria-label="Parade">🎉</button>
+    <button id="f-menu" aria-label="Menu">☰<i id="menu-n"></i></button>
     <button id="f-chest" aria-label="Coffres">🎁<i id="chest-n"></i></button>
     <button id="f-season" aria-label="Saison">⭐</button>
     <button id="f-custom" aria-label="Personnaliser">🎨</button>
@@ -180,6 +202,7 @@ button{font:inherit;border:0;cursor:pointer;touch-action:manipulation}
     <button id="f-rot" aria-label="Tourner la vue">🔄</button>
     <button id="f-tilt" aria-label="Incliner la vue">📐</button>
     <button id="f-home" aria-label="Revenir à l'entrée">🧭</button>
+    <button id="f-cam" aria-label="Réglages de la vue">🎥</button>
   </div>
   <div id="sheet">
     <div id="sh-top"><b id="sh-ttl"></b>
@@ -191,6 +214,7 @@ button{font:inherit;border:0;cursor:pointer;touch-action:manipulation}
   </div>
   <div id="tier"><b></b><span></span></div>
   <div id="mg"><div id="mg-bar"><b id="mg-t"></b><span id="mg-s"></span><button id="mg-x" aria-label="Fermer">✕</button></div><div id="mg-body"></div></div>
+  <div id="tuto"><b id="tu-t"></b><p id="tu-d"></p><div><button id="tu-skip">Passer</button><span id="tu-n"></span><button class="buy" id="tu-next">Suivant</button></div></div>
   <div id="toast"></div>
   <div id="modal"><div><div class="big" id="m-ico">🦔</div><h3 id="m-ttl"></h3><p id="m-txt"></p><button class="buy wide" id="m-ok">Super !</button></div></div>
 </div>
@@ -205,7 +229,7 @@ const ISL={rx:1750,rz:1600,cz:40};
 const ISLS=[{cx:0,cz:40,rx:1750,rz:1600,top:0x86cc72},{cx:3150,cz:800,rx:900,rz:560,top:0x8ccf78},{cx:-3150,cz:800,rx:900,rz:560,top:0xe6d9a4},{cx:0,cz:2750,rx:900,rz:560,top:0x5f9a6a}];
 const DZM=1950, VIA=1250;      // l'île Piko Magie est au sud : même plan que les autres parcs, décalé de DZM ; les voitures passent par le pont sud (x = VIA)
 const onLand=(x,z)=>ISLS.some(I=>Math.pow((x-I.cx)/I.rx,2)+Math.pow((z-I.cz)/I.rz,2)<.93);
-const F1_COST=2e10, MAGIE_COST=5e8;
+const F1_COST=2e12, MAGIE_COST=2e10;
 const onIsland=(x,z,f)=>Math.pow(x/ISL.rx,2)+Math.pow((z-ISL.cz)/ISL.rz,2)<(f||.74);
 const NODES=[], ADJ=[], LINKS=[];
 function addNode(x,z){ NODES.push({x,z}); ADJ.push([]); return NODES.length-1; }
@@ -273,6 +297,7 @@ const V = [
   {n:'Cabinets Enchantés',   e:'🚻', kind:'wc',   model:'wc',      zone:'magie', park:'magie', x:300, z:2762, r:50,  con:nMP, h:55,  col:0xdbe9f2, unlock:1e9,  fare:300,   time:2.5, seats:4},
 ];
 V.forEach(v=>{
+  v.unlock*= v.unlock>=1e6?6 : v.unlock>=1e4?3 : v.unlock>=1000?1.5 : 1;      // le jeu était trop court : constructions plus chères
   const c=NODES[v.con], L=Math.hypot(c.x-v.x,c.z-v.z);
   v.dx=(c.x-v.x)/L; v.dz=(c.z-v.z)/L;
   v.ex=v.x+v.dx*(v.r+6); v.ez=v.z+v.dz*(v.r+6);
@@ -287,7 +312,7 @@ function route(a,b){ const out=[]; while(a!==b){ a=NXT[a][b]; out.push(a); } ret
 
 const MILES = [10,25,50,100,150,200,300,400,500,750,1000];
 const UPS = {
-  cap:   {e:'🚗', n:'Places de parking', base:30,  g:1.17, desc:l=>`${parkCap(l)} visiteurs max`, note:()=>parkCapRaw(S.up.cap)>SLOT_N*(1+S.up.etage)?'⚠️ Plafond du parking atteint : construis un étage':''},
+  cap:   {e:'🚗', n:'Places de parking', base:30,  g:1.17, desc:l=>`${parkCap(l)} visiteurs max`, note:()=>parkCapRaw(S.up.cap)>capMaxP()?'⚠️ Plafond atteint : construis un étage ou un parking annexe':''},
   road:  {e:'🛣️', n:'Accès routiers',    base:40,  g:1.19, desc:l=>`${(0.4+0.12*l).toFixed(2).replace('.',',')} voitures/s (hors pub)`},
   caisse:{e:'💁', n:'Caisses',           base:60,  g:1.2,  desc:l=>`${booths(l)} caisse${booths(l)>1?'s':''} · ${(booths(l)/caisseTime(l)).toFixed(2).replace('.',',')} visiteurs/s`},
   tick:  {e:'🎟️', n:'Prix du billet',    base:25,  g:1.24, desc:l=>`${fmt(2*Math.pow(1.18,l)*mult())} € l'entrée`},
@@ -295,7 +320,9 @@ const UPS = {
   gest:  {e:'💼', n:'Gestion du parc',   base:500, g:1.25, desc:l=>`+${l*5} % sur toutes les recettes`},
   tech:  {e:'🔧', n:'Techniciens',       base:400, g:1.23, desc:l=>`${(1.2*Math.pow(.93,l)).toFixed(2).replace('.',',')} % de pannes · réparées en ${Math.round(Math.max(8,50*Math.pow(.9,l)))} s`},
   hotel: {e:'🏨', n:'Hôtel Piko',        base:5e4, g:1.32, desc:l=>l<1?'Terrain à bâtir':`${4*l} chambres · ${fmt(400*Math.pow(1.2,l)*mult())} € la nuit`},
-  etage: {e:'🏗️', n:'Parking à étages',  base:3e3, g:11, max:4, desc:l=>`${1+l} niveau${l?'x':''} · ${SLOT_N*(1+l)} places max`},
+  etage: {e:'🏗️', n:'Parking à étages',  base:3e3, g:11, max:4, desc:l=>`${1+l} niveau${l?'x':''} · ${(56+28*S.up.lots)*(1+l)} places max`},
+  lots:  {e:'🅿️', n:'Parkings annexes',  base:4e4, g:80, max:2, desc:l=>`${1+l} parking${l?'s':''} · ${56+28*l} places par niveau`},
+  power: {e:'⚡', n:'Centrale électrique', base:300, g:1.32, desc:l=>`${powerCap(l)} kW produits`, note:()=>PF<1?`⚠️ Le parc consomme ${PDEM} kW : les manèges tournent à ${Math.round(PF*100)} % de leur vitesse`:`Consommation actuelle : ${PDEM} kW`},
   fast:  {e:'⚡', n:'Coupe-file',        base:5e3, g:1.28, max:10, desc:l=>l<1?'Aucun coupe-file':`${l*6} % des visiteurs coupent la file (+60 % de recette)`},
   rcap:  {e:'🚗', n:'Parking Racing',    base:2e9, g:1.17, desc:l=>`${parkCapRaw2(l)} visiteurs max`, note:()=>parkCapRaw2(S.up.rcap)>SLOT_R*(1+S.up.retage)?'⚠️ Plafond du parking atteint : construis un étage':''},
   rroad: {e:'🛣️', n:'Accès Racing',      base:3e9, g:1.19, desc:l=>`${(0.25+0.1*l).toFixed(2).replace('.',',')} voitures/s (hors pub)`},
@@ -319,8 +346,8 @@ const OFFICE={x:640,z:800,r:95}, MAINT={x:-650,z:610,r:78};
 
 /* ================= État sauvegardé ================= */
 function fresh(){
-  return {money:10, run:0, total:0, stars:0, seasons:0, buy:1, rate:0, last:Date.now(), seen:false, rating:.5, goal:0, parades:0, boostEnd:0, boostCd:0, chests:1, chestT:0, day:'', streak:0, cards:{}, planes:0, music:true, sfx:true, gfx:'auto', night:true, flow:1, glass:0, mg:{}, turboEnd:0, name:'', friends:[], best:{tir:0,memo:0}, fgift:{}, inv:true, cz:{name:'', pal:0, season:0, mascot:0, deco:[0,0,0,0,0,0]},
-    up:{cap:0, road:0, caisse:0, tick:0, pub:0, gest:0, tech:0, hotel:0, aqua:0, etage:0, fast:0, f1:0, rcap:0, rroad:0, rtick:0, retage:0, acap:0, aroad:0, atick:0, aetage:0, magie:0, mcap:0, mroad:0, mtick:0, metage:0, clean:0, form:0, shop:0, night:0}, lv:V.map((_,i)=>i===0?1:0)};
+  return {money:10, run:0, total:0, stars:0, seasons:0, buy:1, rate:0, last:Date.now(), seen:false, rating:.5, goal:0, parades:0, boostEnd:0, boostCd:0, chests:1, chestT:0, day:'', streak:0, cards:{}, planes:0, music:true, sfx:true, gfx:'auto', night:true, invR:true, tuto:false, flow:1, glass:0, mg:{}, turboEnd:0, name:'', friends:[], best:{tir:0,memo:0}, fgift:{}, inv:true, cz:{name:'', pal:0, season:0, mascot:0, deco:[0,0,0,0,0,0]},
+    up:{cap:0, road:0, caisse:0, tick:0, pub:0, gest:0, tech:0, hotel:0, aqua:0, etage:0, fast:0, f1:0, rcap:0, rroad:0, rtick:0, retage:0, acap:0, aroad:0, atick:0, aetage:0, lots:0, power:0, magie:0, mcap:0, mroad:0, mtick:0, metage:0, clean:0, form:0, shop:0, night:0}, lv:V.map((_,i)=>i===0?1:0)};
 }
 let S = fresh(), visiting=null, Sback=null;
 function load(){
@@ -344,18 +371,18 @@ const CARDS={
 };
 const RAR=[{n:'Commun',c:'#7d848d',v:2,p:.68},{n:'Rare',c:'#3b82c4',v:5,p:.23},{n:'Épique',c:'#8e5bd0',v:12,p:.075},{n:'Légendaire',c:'#e89a10',v:30,p:.015}];
 const cb = k => { const c=S.cards[k]; return c ? RAR.reduce((a,r,q)=>a+r.v*(c[q]||0),0)/100 : 0; };
-const CHEST_EVERY=480, AQUA_COST=5e6;
+const CHEST_EVERY=480, AQUA_COST=6e7;
 const hotelRooms = () => 4*S.up.hotel, hotelPrice = () => 400*Math.pow(1.2,S.up.hotel)*mult();
 const mult = () => (1 + S.stars*STAR_BONUS) * (1 + 0.05*S.up.gest) * (boostOn()?2:1) * (evK==='vip'?1.5:1);
 const miles = l => { let m=0; for(const x of MILES) if(l>=x) m++; return m; };
 const nextMile = l => MILES.find(x=>x>l);
 const fare  = i => V[i].fare * S.lv[i] * Math.pow(2, miles(S.lv[i])) * mult() * (1 + cb(V[i].kind==='wc'?'none':V[i].kind)) * (V[i].kind==='resto'&&(evK==='rain'||evK==='heat')?1.5:1);
 const seats = i => V[i].seats + 2*miles(S.lv[i]);
-const rtime = i => V[i].time * Math.pow(0.92, miles(S.lv[i])) * Math.pow(.985, S.up.form);
-const venCost = i => l => Math.max(V[i].unlock*0.2, 6) * Math.pow(1.145, l-1);
+const rtime = i => V[i].time * Math.pow(0.92, miles(S.lv[i])) * Math.pow(.985, S.up.form) / PF;      // PF < 1 quand la centrale ne suit pas
+const venCost = i => l => Math.max(V[i].unlock*0.2, 6) * Math.pow(1.16, l-1);
 const upCost  = k => l => UPS[k].base * Math.pow(UPS[k].g, l);
 const parkCapRaw = l => Math.floor((10 + 5*l) * (1 + cb('park')));
-const parkCap = l => Math.min(parkCapRaw(l), SLOT_N*(1+S.up.etage));      // le parking au sol est plafonné : il faut des étages
+const parkCap = l => Math.min(parkCapRaw(l), capMaxP());      // le parking au sol est plafonné : il faut des étages
 const arrRate = () => (0.4 + 0.12*S.up.road) * (1 + 0.1*S.up.pub) * (0.5 + 0.9*S.rating) * (1 + cb('vis')) * flowMult() * evArr();   // la satisfaction fait le bouche-à-oreille
 const booths = l => Math.min(5, 1+Math.floor(l/3));
 const caisseTime = l => 2.2 * Math.pow(0.95, l);
@@ -402,10 +429,14 @@ function fmtTime(s){ const h=Math.floor(s/3600), m=Math.floor(s%3600/60); return
 
 /* ================= Géométrie du parking, des caisses et des files ================= */
 const LANE=852, ROAD_IN=1162, ROAD_OUT=1122, CASH_Z=745, SLOT_N=56, SLOT_R=48, FH=26;
-const RG={x:3150,z:790};                                   // porte d'entrée de l'île Racing
+const RG={x:3150,z:790}, LOT_F=112;
+const slotOk=s=>{ const k=s%LOT_F; return Math.floor(s/LOT_F)<=S.up.etage && k<56+28*S.up.lots; };
+const capMaxP=()=>(56+28*S.up.lots)*(1+S.up.etage);                                   // porte d'entrée de l'île Racing
 function slotPos(s,p){                                    // p = 'f1' pour le parking de l'île Racing ; f = étage
   if(PK[p]){ const k=s%SLOT_R; return {x:PK[p].sx+(k%12)*55, z:886+PK[p].dz+Math.floor(k/12)*48, f:Math.floor(s/SLOT_R)}; }
-  const k=s%SLOT_N; return {x:-390+(k%14)*60, z:886+Math.floor(k/14)*48, f:Math.floor(s/SLOT_N)};
+  const k=s%LOT_F, fl=Math.floor(s/LOT_F);                 // par niveau : 56 places au parking principal, puis 28 par parking annexe
+  if(k<56) return {x:-390+(k%14)*60, z:886+Math.floor(k/14)*48, f:fl};
+  const j=(k-56)%28; return {x:(k<84?-510:150)+(j%7)*60, z:1262+Math.floor(j/7)*48, f:fl};
 }
 const boothX = (b,n) => (b-(n-1)/2)*50;
 function cashQ(b,n,k){ const x=boothX(b,n); return k<9 ? {x, z:CASH_Z+16+k*10} : {x:x+((k*7)%11-5)*2, z:LANE-4+((k*5)%7)}; }
@@ -417,18 +448,24 @@ function qpos(i,k){            // file en serpentin à côté de l'entrée du li
 /* ================= Simulation ================= */
 let visitors=[], RT=[], CASH=[], usedSlots=new Set(), usedSlotsR=new Set(), parkN=0, parkNR=0, acc=0, accR=0, clock=0;
 function resetSim(){ visitors=[]; RT=V.map(()=>({queue:[], riders:[], p:0, n:0, broken:0})); CASH=[0,1,2,3,4].map(()=>({queue:[], t:0})); usedSlots=new Set(); parkN=0; acc=0; for(const p in PK){ PK[p].used=new Set(); PK[p].n=0; PK[p].acc=0; } }
-let earnedSec=0, secAcc=0, hotelT=0;
+let earnedSec=0, secAcc=0, hotelT=0, refRate=0, pwT=0, PF=1, PDEM=0;
+// Causes de la satisfaction : moyenne glissante, par visiteur qui repart, de ce que chaque cause lui a ajouté ou retiré
+const SAT={ride:0,food:0,wc:0,vip:0,base:0,cash:0,wait:0,quit:0,nowc:0,full:0};
+function mood(v,k,d){ v.joy+=d; v.w[k]=(v.w[k]||0)+d; }
+const powerCap = l => 10+6*l;
+function calcPower(){ let d=0; for(let i=0;i<V.length;i++) if(S.lv[i]>0) d+=2+miles(S.lv[i]); PDEM=d; PF=Math.max(.4,Math.min(1,powerCap(S.up.power)/Math.max(1,d))); }
 function earn(x){ S.money+=x; S.run+=x; S.total+=x; earnedSec+=x; }
+function bonus(x){ S.money+=x; S.run+=x; S.total+=x; }            // gain ponctuel : ne compte PAS dans le revenu par seconde
 const COLS=[0xe4572e,0x3b82c4,0xf2b134,0x7b4fb8,0x2aa876,0xe0569b,0x3a3a3a,0xff8c42,0xffffff];
 const CARS=[0xd94a3a,0x3b77c4,0xf2c14e,0xeeeeee,0x4a4a4a,0x2f9e6e,0x8e5bd0];
 
 function spawn(park){
-  const K=PK[park], used=K?K.used:usedSlots; let s=0; while(used.has(s)) s++;
+  const K=PK[park], used=K?K.used:usedSlots; let s=0; while(used.has(s)||(!K&&!slotOk(s))) s++;
   used.add(s); if(K) K.n++; else parkN++;
   const sp=slotPos(s,park), j=[.1,0,-.08][S.flow]+.012*S.up.clean;
   visitors.push({st:'driveIn', park:K?park:'piko', slot:s, x:sp.x, z:sp.z, col:COLS[Math.random()*COLS.length|0], ccol:CARS[Math.random()*CARS.length|0],
     car:{x:-2100,z:ROAD_IN,ang:Math.PI/2}, wp:K&&K.via?[{x:K.via,z:ROAD_IN},{x:K.via,z:ROAD_IN+K.dz},{x:sp.x,z:ROAD_IN+K.dz},{x:sp.x,z:sp.z}]:[{x:sp.x,z:ROAD_IN},{x:sp.x,z:sp.z}], att:-1, node:K?K.node:nG, qi:0, vip:false,
-    joy:.55+j, qt:0, jx:(Math.random()-.5)*26, jz:(Math.random()-.5)*26, blad:Math.random()*.5, hung:Math.random()*.5, ph:Math.random()*6});
+    joy:.55+j, w:{base:j}, qt:0, jx:(Math.random()-.5)*26, jz:(Math.random()-.5)*26, blad:Math.random()*.5, hung:Math.random()*.5, ph:Math.random()*6});
 }
 function pickKind(kind,from,park){
   let best=-1, bv=Infinity; const pk=park||'piko';
@@ -453,13 +490,13 @@ function leave(v){
 }
 function decide(v,from){
   if(v.blad>=1){                                   // envie pressante : toilettes, sinon on rentre
-    const w=pickKind('wc',from,v.park); if(w<0){ v.joy-=.3; return leave(v); } return goVenue(v,w);
+    const w=pickKind('wc',from,v.park); if(w<0){ mood(v,'nowc',-.2); return leave(v); } return goVenue(v,w);
   }
   if(v.hung>=1){
     const r=pickKind('resto',from,v.park); if(r>=0) return goVenue(v,r); v.hung=0;
   }
   if(from>=0 && Math.random()>STAY) return leave(v);
-  const i=pickKind('ride',from,v.park); if(i<0){ v.joy-=.15; return leave(v); } return goVenue(v,i);
+  const i=pickKind('ride',from,v.park); if(i<0){ mood(v,'full',-.15); return leave(v); } return goVenue(v,i);
 }
 function move(o,wp,sp,dt){
   let d=sp*dt;
@@ -477,7 +514,8 @@ function step(dt){
   const arr=arrRate(), capP=parkCap(S.up.cap), hk=evK==='heat'?2:1;
   acc+=arr*dt; while(acc>=1){ if(parkN<capP){ acc-=1; spawn('piko'); } else { acc=1; refused+=arr*dt; break; } }
   for(const p in PK){ const K=PK[p], rr=arrS(p); if(rr>0){ K.acc+=rr*dt; const cp=parkCapS(p); while(K.acc>=1){ if(K.n<cp){ K.acc-=1; spawn(p); } else { K.acc=1; refused+=rr*dt; break; } } } else K.acc=0; }
-  while(refused>=1){ refused-=1; turned++; S.rating=Math.max(.05,S.rating-.002); if(clock-refT>25){ refT=clock; toast('🚗 Parking complet : des visiteurs font demi-tour…',2600); } }
+  { let inc=0; while(refused>=1){ refused-=1; turned++; inc++; } refRate=refRate*.985+(inc/dt)*60*.015; }
+  if((pwT-=dt)<=0){ pwT=1; calcPower(); }
   const nb=booths(S.up.caisse);
   for(let b=0;b<5;b++) CASH[b].queue.forEach((v,k)=>v.qi=k);
   RT.forEach(r=>r.queue.forEach((v,k)=>v.qi=k));
@@ -502,15 +540,15 @@ function step(dt){
         if(move(v,v.wp,115,dt)){ v.node=nG; decide(v,-1); }
         break;
       case 'toAtt':
-        if(move(v,v.wp,115,dt)){ v.st='queue'; v.qt=clock; const q=RT[v.att].queue; if(Math.random()<fastP()){ v.vip=true; v.joy+=.04; q.unshift(v); } else q.push(v); v.qi=q.indexOf(v); }
+        if(move(v,v.wp,115,dt)){ v.st='queue'; v.qt=clock; const q=RT[v.att].queue; if(Math.random()<fastP()){ v.vip=true; mood(v,'vip',.04); q.unshift(v); } else q.push(v); v.qi=q.indexOf(v); }
         break;
       case 'queue':
         if(clock-v.qt>[100,85,65][S.flow] && v.qi>=seats(v.att)){            // trop d'attente : le visiteur s'en va, mécontent
-          const r=RT[v.att], ix=r.queue.indexOf(v); if(ix>=0) r.queue.splice(ix,1); r.n--; v.joy-=.3; leave(v);
+          const r=RT[v.att], ix=r.queue.indexOf(v); if(ix>=0) r.queue.splice(ix,1); r.n--; mood(v,'quit',-.3); leave(v);
         } else move(v,[qpos(v.att,v.qi)],90,dt);
         break;
       case 'toExit':
-        if(move(v,v.wp,115,dt)){ v.st='driveOut'; S.rating=S.rating*.97+Math.max(0,Math.min(1,v.joy))*.03; const K=PK[v.park];
+        if(move(v,v.wp,115,dt)){ v.st='driveOut'; S.rating=S.rating*.97+Math.max(0,Math.min(1,v.joy))*.03; for(const k in SAT) SAT[k]=SAT[k]*.96+(v.w[k]||0)*.04; const K=PK[v.park];
           if(K){ K.n--; K.used.delete(v.slot); } else { parkN--; usedSlots.delete(v.slot); }
           if(S.up.shop>0){ const g=(K?ticketS(v.park):ticket())*.3*S.up.shop; earn(g); if(!K&&Math.random()<.25) pop(270,40,770,'🛍️ +'+fmt(g)+' €'); }
           const sp=slotPos(v.slot,v.park); v.car={x:sp.x,z:sp.z,ang:Math.PI}; v.wp=K&&K.via?[{x:sp.x,z:ROAD_OUT+K.dz},{x:K.via+40,z:ROAD_OUT+K.dz},{x:K.via+40,z:ROAD_OUT},{x:K.out,z:ROAD_OUT}]:[{x:sp.x,z:ROAD_OUT},{x:K?K.out:2100,z:ROAD_OUT}]; }
@@ -530,7 +568,7 @@ function step(dt){
     if(Math.hypot(h.x-q.x,h.z-q.z)<3){
       c.t+=dt;
       if(c.t>=ct){ c.t=0; c.queue.shift(); const t=ticket(); earn(t); sfx('ding',q.x,CASH_Z); if(Math.random()<.4) pop(q.x,30,CASH_Z,'+'+fmt(t)+' €');
-        h.joy-=Math.min(.25,(clock-h.qt)/60*.25); h.st='toGate'; h.wp=[{x:q.x,z:CASH_Z-14},{x:h.jx,z:700}]; }
+        mood(h,'cash',-Math.min(.25,(clock-h.qt)/60*.25)); h.st='toGate'; h.wp=[{x:q.x,z:CASH_Z-14},{x:h.jx,z:700}]; }
     }
   }
   // Attractions, restaurants, toilettes
@@ -538,7 +576,7 @@ function step(dt){
     if(S.lv[i]<1) continue;
     const r=RT[i];
     if(r.broken>0){ r.broken-=dt; continue; }            // en panne : personne n'embarque
-    if(!r.riders.length && r.queue.length){ r.riders=r.queue.splice(0,seats(i)); r.riders.forEach(v=>{ v.st='ride'; v.joy-=Math.min(.3,(clock-v.qt)/90*.3); }); r.p=0; r.scr=false; }
+    if(!r.riders.length && r.queue.length){ r.riders=r.queue.splice(0,seats(i)); r.riders.forEach(v=>{ v.st='ride'; mood(v,'wait',-Math.min(.3,(clock-v.qt)/90*.3)); }); r.p=0; r.scr=false; }
     if(r.riders.length){
       r.p+=dt;
       if(!r.scr && V[i].kind==='ride' && !['carousel','wheel','papillons','champignons','vagues','riviere'].includes(V[i].model) && r.p>rtime(i)*(V[i].model==='tower'?.68:.3)){ r.scr=true; sfx('scream',V[i].x,V[i].z); }
@@ -546,9 +584,9 @@ function step(dt){
         const gain=(r.riders.length+.6*r.riders.filter(v=>v.vip).length)*fare(i), kind=V[i].kind; earn(gain); if(miles(S.lv[i])>=7 && Math.random()<.5) fx(V[i].x,V[i].h*vsy(i)+20,V[i].z,16); if(kind==='wc') sfx('flush',V[i].x,V[i].z); else if(kind==='resto') sfx('ding',V[i].x,V[i].z); pop(V[i].x,V[i].h*.8,V[i].z,'+'+fmt(gain)+' €');
         for(const v of r.riders){
           r.n--; v.x=V[i].ex; v.z=V[i].ez; v.vip=false;
-          if(kind==='wc'){ v.blad=0; v.joy+=.05; }
-          else if(kind==='resto'){ v.hung=0; v.blad+=.3; v.joy+=.15; }
-          else { v.blad+=(.2+Math.random()*.25)*hk; v.hung+=(.15+Math.random()*.25)*hk; v.joy+=.14; }
+          if(kind==='wc'){ v.blad=0; mood(v,'wc',.05); }
+          else if(kind==='resto'){ v.hung=0; v.blad+=.3; mood(v,'food',.15); }
+          else { v.blad+=(.2+Math.random()*.25)*hk; v.hung+=(.15+Math.random()*.25)*hk; mood(v,'ride',.14); }
           decide(v,i);
         }
         r.riders=[]; r.p=0;
@@ -740,7 +778,7 @@ const billboards=[];
     textTex([['🎢 ÉCLAIR DES ALPES',46,75],['Sensations garanties',38,145],['Piko Idle Park',34,205]],'#1f5c3a','#fff'),
     textTex([['🥞 🍕 🎠 👻',64,80],['Une journée en famille',38,150],['Piko Idle Park',34,208]],'#2b6fd6','#fff'),
   ];
-  [-150,330,-640,800,-880,90].forEach((x,k)=>{
+  [0,-700,700,-880,880,-1020].forEach((x,k)=>{
     const g=new THREE.Group(); g.position.set(x,0,1228); scene.add(g);
     cyl(2.5,2.5,52,0x777777,-36,26,0,g,8); cyl(2.5,2.5,52,0x777777,36,26,0,g,8); box(124,62,4,0x444444,0,80,0,g);
     sign(tx[k%3],118,56,0,80,2.3,g); const b=sign(tx[k%3],118,56,0,80,-2.3,g); b.rotation.y=Math.PI;
@@ -1580,6 +1618,33 @@ function applyCz(){
   hats.forEach((h,k)=>h.visible=k>0&&k===z.mascot);
   decoSpots.forEach((s,i)=>s.items.forEach((it,k)=>it.visible=k===(z.deco[i]||0)));
 }
+// --- Parkings annexes (au sud de la route) et centrale électrique ---
+const POWER={x:1180,z:850,r:72}, lotG=[], lotSale=[], panels=[], deckB=buildDeck(-330,1334,440,208), deckC=buildDeck(330,1334,440,208);
+{
+  const c=document.createElement('canvas'); c.width=512; c.height=256; const g=c.getContext('2d');
+  g.fillStyle='#6b727c'; g.fillRect(0,0,512,256); g.lineWidth=3; g.strokeStyle='rgba(255,255,255,.75)';
+  for(let j=0;j<28;j++){ const px=(40+(j%7)*60)/440*512, pz=(32+Math.floor(j/7)*48)/208*256; g.strokeRect(px-21,pz-30,42,60); }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; const lm=new THREE.MeshLambertMaterial({map:t});
+  [-330,330].forEach((cx,k)=>{
+    const G=new THREE.Group(); scene.add(G); lotG.push(G);
+    const p=mesh(new THREE.PlaneGeometry(440,208),lm,cx,1.1,1334,G,false); p.rotation.x=-Math.PI/2;
+    box(120,1,40,0x6b727c,cx,.55,1214,G,false); cyl(2,2,46,0x888888,cx-240,23,1250,G,6); sign(textTex([['P'+(k+2),150,128]],'#2b6fd6','#fff',256,256),34,34,cx-240,58,1250,G,true);
+    const sale=new THREE.Group(); scene.add(sale); lotSale.push(sale);
+    cyl(1.5,1.5,40,0x777777,cx-34,20,1262,sale,6); cyl(1.5,1.5,40,0x777777,cx+34,20,1262,sale,6);
+    sign(textTex([['🅿️ PARKING ANNEXE',44,48],['Terrain à vendre',32,100]],'#2b6fd6','#fff',512,128),84,21,cx,44,1262,sale,true);
+  });
+  [[deckB,0],[deckC,1]].forEach(([dk])=>tickers.push(now=>{ const lv=S.up.etage; if(!lv) return; dk.lifts.forEach((l,k)=>{ l.cab.position.y=4+(Math.sin(now/1500+k*2.5)+1)/2*FH*lv; }); }));
+  // Centrale : bâtiment, panneaux solaires (un de plus tous les 2 niveaux), éolienne
+  const R0=new THREE.Group(); R0.position.set(POWER.x,0,POWER.z); scene.add(R0);
+  cyl(POWER.r,POWER.r,1.4,0xd5d9de,0,.7,0,R0,36,false);
+  box(60,34,40,0x7d8a96,-14,17,-22,R0); box(64,4,44,0x3a4048,-14,36,-22,R0); cyl(5,6,56,0x9aa3ad,-34,28,-30,R0,10); cyl(5,6,46,0x9aa3ad,-18,23,-30,R0,10);
+  sign(textTex([['⚡ CENTRALE',64,64]],'#f6c343','#2a2118',512,128),52,13,-14,26,-1.6,R0,true);
+  for(let k=0;k<8;k++){ const q=new THREE.Group(); q.position.set(-44+(k%4)*22,0,22+Math.floor(k/4)*22); R0.add(q);
+    cyl(.8,.8,8,0x888888,0,4,0,q,5,false); box(18,1.2,14,0x1f3f8a,0,9,0,q,false).rotation.x=-.5; panels.push(q); }
+  cyl(1.6,2.4,70,0xf4f4f4,42,35,-16,R0,8); const hub=new THREE.Group(); hub.position.set(42,70,-12); hub.userData.dyn=1; R0.add(hub);
+  sph(3,0xf4f4f4,0,0,0,hub,false); for(let k=0;k<3;k++){ const b=new THREE.Group(); b.rotation.z=k*2.094; hub.add(b); box(3.4,30,1,0xf4f4f4,0,16,0,b,false); }
+  tickers.push(now=>{ hub.rotation.z=now/(PF<1?2600:700); });
+}
 // --- Services de l'île Piko : boutique de souvenirs, agents d'entretien ---
 const shopG=new THREE.Group(), sweepers=[];
 { shopG.position.set(270,0,772); scene.add(shopG);
@@ -1602,7 +1667,7 @@ const shopG=new THREE.Group(), sweepers=[];
     if(z>690 && Math.abs(x)<470) continue; if(z>1060) continue; if(!onIsland(x,z)) continue;
     if(Math.hypot(x-HOTEL.x,z-HOTEL.z)<HOTEL.r+25) continue; if(ROCKS.some(r=>Math.hypot(x-r[0],z-r[1])<150*r[2])) continue; if(PLAZAS.some(q=>Math.hypot(x-q[0],z-q[1])<q[2]+22)) continue; if(DECO.some(q=>Math.hypot(x-q[0],z-q[1])<48)) continue;
     if(Math.hypot(x/120,z/105)<1) continue;
-    if(Math.hypot(x-OFFICE.x,z-OFFICE.z)<OFFICE.r+25) continue; if(Math.hypot(x-AQUA.x,z-AQUA.z)<AQUA.r+25) continue; if(Math.hypot(x-MAINT.x,z-MAINT.z)<MAINT.r+25) continue; if(z>760&&z<820&&x>150&&x<560) continue;
+    if(Math.hypot(x-OFFICE.x,z-OFFICE.z)<OFFICE.r+25) continue; if(Math.hypot(x-AQUA.x,z-AQUA.z)<AQUA.r+25) continue; if(Math.hypot(x-MAINT.x,z-MAINT.z)<MAINT.r+25) continue; if(Math.hypot(x-POWER.x,z-POWER.z)<POWER.r+25) continue; if(z>760&&z<820&&x>150&&x<560) continue;
     if(V.some(v=>Math.hypot(x-v.x,z-v.z)<v.r+26)) continue;
     if(V.some(v=>Math.hypot(x-(v.ex+v.dx*35-v.dz*50),z-(v.ez+v.dz*35+v.dx*50))<55)) continue;
     if(LINKS.some(([a,b])=>segD(x,z,NODES[a],NODES[b])<44)) continue;
@@ -1659,7 +1724,7 @@ let vw=1, vh=1;
 const cam={x:0,z:640,dist:1500,yaw:0,yawT:0,pitch:.74}, clampPitch=p=>Math.max(.36,Math.min(1.28,p));
 let curPR=1;
 function applyGfx(){            // Auto : part de la meilleure résolution et la baisse si le jeu rame
-  const top=Math.min(window.devicePixelRatio||1,2); curPR = S.gfx==='low' ? Math.min(1,top) : top;
+  const top=Math.min(window.devicePixelRatio||1, window.matchMedia&&matchMedia('(pointer:coarse)').matches?1.5:2);      // sur téléphone : 1,5 suffit et allège beaucoup curPR = S.gfx==='low' ? Math.min(1,top) : top;
   sun.castShadow=S.gfx!=='low'; renderer.shadowMap.needsUpdate=true; renderer.setPixelRatio(curPR); sceneKey='';
 }
 function resize(){ vw=cv.clientWidth; vh=cv.clientHeight; renderer.setPixelRatio(curPR); renderer.setSize(vw,vh,false); camera.aspect=vw/vh; camera.updateProjectionMatrix(); }
@@ -1692,11 +1757,11 @@ cv.addEventListener('pointermove',e=>{
   const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY;
   if(pts.size===1){
     moved+=Math.abs(dx)+Math.abs(dy);
-    if(e.buttons===2){ cam.yawT-=dx*.006; cam.yaw=cam.yawT; cam.pitch=clampPitch(cam.pitch+dy*.004); } else panBy(dx,dy);
+    if(e.buttons===2){ cam.yawT-=dx*.006*(S.invR?-1:1); cam.yaw=cam.yawT; cam.pitch=clampPitch(cam.pitch+dy*.004); } else panBy(dx,dy);
   } else if(pts.size===2){
     const [a,b]=[...pts.values()], d=Math.hypot(a.x-b.x,a.y-b.y), ang=Math.atan2(b.y-a.y,b.x-a.x);
     const my=(a.y+b.y)/2;
-    if(pinch){ cam.pitch=clampPitch(cam.pitch+(my-pmy)*.005); cam.dist*=pinch/d; let da=ang-pang; if(da>Math.PI) da-=Math.PI*2; if(da<-Math.PI) da+=Math.PI*2; cam.yawT-=da; cam.yaw=cam.yawT; clampCam(); }
+    if(pinch){ cam.pitch=clampPitch(cam.pitch+(my-pmy)*.005); cam.dist*=pinch/d; let da=ang-pang; if(da>Math.PI) da-=Math.PI*2; if(da<-Math.PI) da+=Math.PI*2; cam.yawT-=da*(S.invR?-1:1); cam.yaw=cam.yawT; clampCam(); }
     pinch=d; pang=ang; pmy=my; moved=99;
   }
 });
@@ -1726,6 +1791,8 @@ function tap(sx,sy){
   for(const p in PK){ const K=PK[p]; if((Math.abs(x-K.cx)<385 && z>850+K.dz && z<1070+K.dz)||(Math.abs(x-K.gx)<200 && z>690+K.dz && z<=850+K.dz)) return tapSel({kind:K.sheet}); }
 
   if(Math.abs(x)<440 && z>850 && z<1065) return openSheet({kind:'park'});
+  if(Math.abs(x)<570 && z>1225 && z<1450) return openSheet({kind:'park'});
+  if(Math.hypot(x-POWER.x,z-POWER.z)<POWER.r+10) return openSheet({kind:'power'});
   if(Math.abs(x)<160 && z>680 && z<=850) return openSheet({kind:'gate'});
   if(Math.hypot(x-OFFICE.x,z-OFFICE.z)<OFFICE.r+10) return openSheet({kind:'office'});
 
@@ -1748,13 +1815,14 @@ V.forEach((v,i)=>mkLabel(v.x,v.h,v.z,{kind:'ven',i},l=>{
   else { const q=RT[i].queue.length, t=miles(lv), bd=t<1?'':t<=5?'⭐'.repeat(t):t<=8?'👑'.repeat(t-5):'💎'.repeat(t-8); setT(l.el,`${v.e} ${nm}${bd?' '+bd:''}${q?' · 👥 '+q:''}`); cls(l.el,'lab'+(S.money>=venCost(i)(lv)?' can':'')); }
 }));
 const canUp=ks=>ks.some(k=>!(UPS[k].max&&S.up[k]>=UPS[k].max)&&S.money>=upCost(k)(S.up[k]));
-mkLabel(0,26,960,{kind:'park'},l=>{ l.y=26+FH*S.up.etage; const cap=parkCap(S.up.cap), full=parkN>=cap; setT(l.el,`🅿️ Parking · ${parkN}/${cap}${full?' · COMPLET':''}`); cls(l.el,'lab'+(full?' full':'')+(canUp(['cap','road','etage'])?' can':'')); });
+mkLabel(0,26,960,{kind:'park'},l=>{ l.y=26+FH*S.up.etage; const cap=parkCap(S.up.cap), full=parkN>=cap; setT(l.el,`🅿️ Parking · ${parkN}/${cap}${full?' · COMPLET':''}`); cls(l.el,'lab'+(full?' full':'')+(canUp(['cap','road','etage','lots'])?' can':'')); });
 mkLabel(0,112,700,{kind:'gate'},l=>{ const q=CASH.reduce((a,c)=>a+c.queue.length,0); setT(l.el,`🎟️ Caisses${q?' · 👥 '+q:''}`); cls(l.el,'lab'+(canUp(['caisse','tick'])?' can':'')); });
 mkLabel(MAINT.x,66,MAINT.z,{kind:'maint'},l=>{ const n=RT.filter((r,i)=>S.lv[i]>0&&r.broken>0).length; setT(l.el,n?`🔧 Maintenance · ${n} panne${n>1?'s':''}`:'🔧 Maintenance'); cls(l.el,'lab'+(n?' full':'')+(canUp(['tech'])?' can':'')); });
 Object.keys(PK).forEach(p=>{ const K=PK[p]; mkLabel(K.cx,40,958+K.dz,{kind:K.sheet},l=>{ l.y=40+FH*S.up[K.ups[3]];
   if(!S.up[K.open]){ setT(l.el,`🔒 Île ${K.full} · ${fmt(K.cost)} €`); cls(l.el,'lab lock'+(S.money>=K.cost?' ok':'')); }
   else { const cap=parkCapS(p), full=K.n>=cap; setT(l.el,`${K.ico} Parking ${K.nm} · ${K.n}/${cap}${full?' · COMPLET':''}`); cls(l.el,'lab'+(full?' full':'')+(canUp(K.ups)?' can':'')); } }); });
 DECO.forEach(([x,z],i)=>{ mkLabel(x,26,z,{kind:'deco',i},l=>{ setT(l.el,'✨ Déco'); cls(l.el,'lab'); }); labels[labels.length-1].off=()=>!S.cz||(S.cz.deco[i]||0)>0||!!visiting; });
+mkLabel(POWER.x,84,POWER.z,{kind:'power'},l=>{ setT(l.el,`⚡ Centrale · ${PDEM}/${powerCap(S.up.power)} kW`); cls(l.el,'lab'+(PF<1?' full':'')+(canUp(['power'])?' can':'')); });
 mkLabel(HOTEL.x,70,HOTEL.z,{kind:'hotel'},l=>{ const L=S.up.hotel; l.y=L?64+16*Math.min(8,1+Math.floor(L/3)):70;
   if(L<1){ setT(l.el,`🔒 Hôtel Piko · ${fmt(UPS.hotel.base)} €`); cls(l.el,'lab lock'+(S.money>=UPS.hotel.base?' ok':'')); } else { setT(l.el,`🏨 Hôtel Piko · ${hotelRooms()} chambres`); cls(l.el,'lab'+(canUp(['hotel'])?' can':'')); } });
 mkLabel(0,240,0,{kind:'gift'},l=>{ setT(l.el,'✈️💰 Touche !'); cls(l.el,'lab ok'); });
@@ -1765,6 +1833,7 @@ const cls=(el,c)=>{ if(el._c!==c){ el._c=c; el.className=c; } };
 function project(x,y,z){ pv.set(x,y,z).project(camera); return {sx:(pv.x+1)/2*vw, sy:(1-pv.y)/2*vh, ok:pv.z<1 && pv.x>-1.15 && pv.x<1.15 && pv.y>-1.1 && pv.y<1.1}; }
 function syncLabels(){
   for(const l of labels){
+    if(Math.abs(l.x-cam.x)>cam.dist*1.4+600 || Math.abs(l.z-cam.z)>cam.dist*2.2+900){ if(l.vis||l.el.style.display!=='none'){ l.vis=false; l.el.style.display='none'; } continue; }
     const p=project(l.x,l.y,l.z); if(l.off&&l.off()) p.ok=false; l.vis=p.ok; l.sx=p.sx; l.sy=p.sy;
     if(!p.ok){ if(l.el.style.display!=='none') l.el.style.display='none'; continue; }
     if(l.el.style.display==='none') l.el.style.display='';
@@ -1807,7 +1876,7 @@ function claimGift(){
   if(!gift.on) return;
   gift.on=false; gift.t=60+Math.random()*60; S.planes++;
   if(S.planes%4===0){ S.chests++; toast("✈️ L'avion largue un coffre 🎁 !",3000); }
-  else { const g=Math.max(40,S.rate*120); earn(g); toast(`✈️ L'avion largue ${fmt(g)} € !`,3000); }
+  else { const g=Math.max(40,S.rate*45); bonus(g); toast(`✈️ L'avion largue ${fmt(g)} € !`,3000); }
   fx(gift.x,205,gift.z,60); sfx('coin');
 }
 function openChest(){
@@ -1841,7 +1910,8 @@ function speakerLine(){
   const br=RT.findIndex((r,i)=>S.lv[i]>0&&r.broken>0); if(br>=0) L.push(`${V[br].n} est fermée pour maintenance. Merci de votre patience.`);
   let bq=-1, bv=0; RT.forEach((r,i)=>{ if(S.lv[i]>0){ const x=r.queue.length/seats(i); if(x>bv){ bv=x; bq=i; } } });
   if(bv>2.5) L.push(`Forte affluence à ${V[bq].n} ! Un coupe-file aiderait.`);
-  if(S.rating<.4) L.push('Certains visiteurs ne sont pas contents… toilettes, files, pannes ?');
+  if(S.rating<.4) L.push('Certains visiteurs ne sont pas contents : touche 😀 en haut pour voir pourquoi.');
+  if(PF<1) L.push("Pas assez d'électricité : les manèges tournent au ralenti. Améliore la centrale ⚡ !");
   if(nightF(performance.now())>.5) L.push('La nuit tombe : profitez des illuminations du parc !');
   if(S.rating>.8) L.push('Les visiteurs adorent le parc, bravo !');
   if(S.total>5e9 && S.stars===0) L.push("Astuce : une nouvelle saison te donne des étoiles qui accélèrent la suite du jeu.");
@@ -1859,12 +1929,12 @@ function tickEvents(dt){
   spkT-=dt; if(spkT<=0){ spkT=14; spkTxt=speakerLine(); }
 }
 function glassRows(){ return [
-  {ico:'⏳', name:()=>`Sabliers : ${S.glass}`, sub:()=>"Un sablier avance le temps d'une heure : tu reçois 1 h de revenus tout de suite.", note:()=>'Gagnés avec le cadeau du jour, les mini-jeux et les objectifs (1 sur 3)',
-   btn:()=>({label:'Avancer 1 h', cost:'+'+fmt(S.rate*3600*(1+cb('off')))+' €', ok:S.glass>0}),
-   act:()=>{ if(S.glass<1) return; S.glass--; const g=S.rate*3600*(1+cb('off')); earn(g); fx(cam.x,60,cam.z,60); sfx('coin'); toast('⏳ +1 h de revenus : +'+fmt(g)+' €',3000); }},
-  {ico:'⏩', name:()=>'Mode turbo', sub:()=>'Le parc tourne deux fois plus vite pendant 5 minutes', note:()=>turboOn()?'Turbo en cours…':'Coûte 1 sablier',
+  {ico:'⏳', name:()=>`Sabliers : ${S.glass}`, sub:()=>"Un sablier avance le temps de 10 minutes : tu reçois 10 min de revenus tout de suite.", note:()=>'Gagnés avec le cadeau du jour, les mini-jeux et les objectifs (1 sur 3)',
+   btn:()=>({label:'Avancer 10 min', cost:'+'+fmt(S.rate*600)+' €', ok:S.glass>0}),
+   act:()=>{ if(S.glass<1) return; S.glass--; const g=S.rate*600; bonus(g); fx(cam.x,60,cam.z,60); sfx('coin'); toast('⏳ +10 min de revenus : +'+fmt(g)+' €',3000); }},
+  {ico:'⏩', name:()=>'Mode turbo', sub:()=>'Le parc tourne deux fois plus vite pendant 3 minutes', note:()=>turboOn()?'Turbo en cours…':'Coûte 1 sablier',
    btn:()=>({label:turboOn()?'Actif':'Lancer', cost:'1 sablier', ok:S.glass>0&&!turboOn()}),
-   act:()=>{ if(S.glass<1||turboOn()) return; S.glass--; S.turboEnd=Date.now()+300000; sfx('fanfare'); toast('⏩ Turbo ×2 pendant 5 minutes !',3000); }}]; }
+   act:()=>{ if(S.glass<1||turboOn()) return; S.glass--; S.turboEnd=Date.now()+180000; sfx('fanfare'); toast('⏩ Turbo ×2 pendant 3 minutes !',3000); }}]; }
 const GOALS=[
   {t:'Chenille Rigolote au niveau 5',        ok:()=>S.lv[0]>=5,        r:100},
   {t:'Agrandis le parking (niveau 2)',       ok:()=>S.up.cap>=2,       r:150},
@@ -1903,7 +1973,7 @@ const GOALS=[
 ];
 $('#goal').onclick=()=>{
   const g=GOALS[S.goal]; if(!g) return;
-  if(g.ok()){ earn(g.r); S.goal++; S.chests++; if(S.goal%3===0) S.glass++; fx(cam.x,40,cam.z,50); sfx('coin'); toast(`🎯 Objectif atteint : +${fmt(g.r)} € et 1 coffre 🎁`,3000); }
+  if(g.ok()){ bonus(g.r); S.goal++; S.chests++; if(S.goal%3===0) S.glass++; fx(cam.x,40,cam.z,50); sfx('coin'); toast(`🎯 Objectif atteint : +${fmt(g.r)} € et 1 coffre 🎁`,3000); }
   else toast('🎯 Objectif : '+g.t,3000);
 };
 $('#f-boost').onclick=()=>{
@@ -1978,7 +2048,7 @@ let sceneKey='';
 function syncScene(now){
   growTick(now);
   const nb=booths(S.up.caisse), cap=Math.min(SLOT_N,parkCap(S.up.cap)), nl=Math.min(12,S.up.road), nf=Math.min(6,Math.floor(S.up.tick/3)), fl=Math.min(8,Math.floor(S.up.gest/2)), nv=Math.min(3,Math.floor(S.up.tech/3));
-  const key=S.lv.map(l=>l>0?miles(l)+1:0).join(',')+'|'+[nb,S.up.pub,cap,nl,nf,fl,nv,S.up.hotel,S.up.aqua,S.up.etage,S.up.retage,S.up.f1,Math.min(SLOT_R,parkCapR()),S.up.aetage,Math.min(SLOT_R,parkCapS('aqua')),S.up.magie,S.up.metage,Math.min(SLOT_R,parkCapS('magie')),JSON.stringify(S.cz),S.up.shop>0?1:0,Math.ceil(S.up.clean/4)].join('|');
+  const key=S.lv.map(l=>l>0?miles(l)+1:0).join(',')+'|'+[nb,S.up.pub,cap,nl,nf,fl,nv,S.up.hotel,S.up.aqua,S.up.etage,S.up.retage,S.up.f1,Math.min(SLOT_R,parkCapR()),S.up.aetage,Math.min(SLOT_R,parkCapS('aqua')),S.up.magie,S.up.metage,Math.min(SLOT_R,parkCapS('magie')),JSON.stringify(S.cz),S.up.lots,Math.min(8,Math.floor(S.up.power/2)),S.up.shop>0?1:0,Math.ceil(S.up.clean/4)].join('|');
   if(key!==sceneKey){
     sceneKey=key;
     V.forEach((v,i)=>{ const g=vg[i], t=S.lv[i]>0?miles(S.lv[i]):-1; g.built.visible=t>=0; g.site.visible=t<0;
@@ -1991,12 +2061,13 @@ function syncScene(now){
     hotelFloors.forEach((f,k)=>f.visible=k<hf); hotelRoof.position.y=22+16*hf; aquaBar.visible=!S.up.aqua;
     boothMeshes.forEach((g,b)=>{ g.visible=b<nb; g.position.set(boothX(b,nb),0,CASH_Z-12); });
     billboards.forEach((g,k)=>g.visible=k<S.up.pub);
-    [[deckP,S.up.etage],[deckR,S.up.retage],[deckA,S.up.aetage],[deckM,S.up.metage]].forEach(([dk,n])=>{ dk.floors.forEach((fl,k)=>fl.visible=k<n); dk.lifts.forEach(l=>{ l.tw.visible=l.cab.visible=n>0; l.tw.scale.y=FH*n+10; }); });
+    [[deckP,S.up.etage],[deckR,S.up.retage],[deckA,S.up.aetage],[deckM,S.up.metage],[deckB,S.up.lots>=1?S.up.etage:0],[deckC,S.up.lots>=2?S.up.etage:0]].forEach(([dk,n])=>{ dk.floors.forEach((fl,k)=>fl.visible=k<n); dk.lifts.forEach(l=>{ l.tw.visible=l.cab.visible=n>0; l.tw.scale.y=FH*n+10; }); });
     raceBar.visible=!S.up.f1; drawLotR(Math.min(SLOT_R,parkCapR())); drawLotA(Math.min(SLOT_R,parkCapS('aqua'))); drawLotM(Math.min(SLOT_R,parkCapS('magie'))); magieBar.visible=!S.up.magie;
-    applyCz(); shopG.visible=S.up.shop>0; sweepers.forEach((t,k)=>t.visible=k<Math.ceil(S.up.clean/4));
+    applyCz(); shopG.visible=S.up.shop>0; lotG.forEach((G,k)=>G.visible=k<S.up.lots); lotSale.forEach((G,k)=>G.visible=k>=S.up.lots); panels.forEach((q,k)=>q.visible=k<Math.min(8,1+Math.floor(S.up.power/2))); sweepers.forEach((t,k)=>t.visible=k<Math.ceil(S.up.clean/4));
     renderer.shadowMap.needsUpdate=true;
   }
-  V.forEach((v,i)=>{ if(S.lv[i]>0){ const r=RT[i], on=r.riders.length>0; vg[i].anim(on?Math.min(r.p/rtime(i),1):0,on,now); }
+  const vx=cam.dist*1.3+500, vz=cam.dist*1.8+700;      // les manèges hors de vue ne sont pas animés
+  V.forEach((v,i)=>{ if(S.lv[i]>0 && Math.abs(v.x-cam.x)<vx && Math.abs(v.z-cam.z)<vz){ const r=RT[i], on=r.riders.length>0; vg[i].anim(on?Math.min(r.p/rtime(i),1):0,on,now); }
     const sm=vg[i].smoke, br=S.lv[i]>0&&RT[i].broken>0; sm.visible=br; if(br){ const u=(now/900+i*.3)%1; sm.position.y=v.h*.45+u*60; sm.scale.setScalar(.6+u*1.8); } });
   // Un technicien marche de l'atelier jusqu'à chaque attraction en panne
   let tk=0;
@@ -2021,7 +2092,7 @@ function syncScene(now){
 /* ================= Panneau d'amélioration ================= */
 let sel=null, rows=[], rowEls=[];
 const bulkUp=k=>UPS[k].max?{n:1,cost:upCost(k)(S.up[k])}:bulk(upCost(k),S.up[k]);
-const UPOS={cap:[0,20,960],road:[0,20,1140],caisse:[0,50,730],tick:[0,95,700],pub:[OFFICE.x,100,OFFICE.z],gest:[OFFICE.x,100,OFFICE.z],fast:[OFFICE.x,100,OFFICE.z],tech:[MAINT.x,60,MAINT.z],hotel:[HOTEL.x,90,HOTEL.z],etage:[0,60,958],clean:[OFFICE.x,100,OFFICE.z],form:[OFFICE.x,100,OFFICE.z],night:[OFFICE.x,100,OFFICE.z],shop:[270,50,772],mcap:[0,20,960+DZM],mroad:[0,20,1140+DZM],mtick:[0,95,790+DZM],metage:[0,60,958+DZM],acap:[-3182,20,960],aroad:[-3182,20,1140],atick:[-3150,95,790],aetage:[-3182,60,958],rcap:[3118,20,960],rroad:[3118,20,1140],rtick:[3150,95,790],retage:[3118,60,958]};
+const UPOS={cap:[0,20,960],road:[0,20,1140],caisse:[0,50,730],tick:[0,95,700],pub:[OFFICE.x,100,OFFICE.z],gest:[OFFICE.x,100,OFFICE.z],fast:[OFFICE.x,100,OFFICE.z],tech:[MAINT.x,60,MAINT.z],hotel:[HOTEL.x,90,HOTEL.z],etage:[0,60,958],lots:[0,40,1334],power:[POWER.x,70,POWER.z],clean:[OFFICE.x,100,OFFICE.z],form:[OFFICE.x,100,OFFICE.z],night:[OFFICE.x,100,OFFICE.z],shop:[270,50,772],mcap:[0,20,960+DZM],mroad:[0,20,1140+DZM],mtick:[0,95,790+DZM],metage:[0,60,958+DZM],acap:[-3182,20,960],aroad:[-3182,20,1140],atick:[-3150,95,790],aetage:[-3182,60,958],rcap:[3118,20,960],rroad:[3118,20,1140],rtick:[3150,95,790],retage:[3118,60,958]};
 function upRow(k){
   const u=UPS[k];
   return {ico:u.e, name:()=>`${u.n} · Niv. ${S.up[k]}`+(u.max?` / ${u.max}`:''),
@@ -2076,10 +2147,10 @@ function seasonRow(){
     btn:()=>{ const g=starsGain(); return {label:'Lancer', cost:'+'+g+' ⭐', ok:g>=1}; },
     act:()=>{ const g=starsGain(); if(g<1) return;
       modal('⭐','Nouvelle saison ?',`Tu gagnes <b>${g} étoile${g>1?'s':''}</b> (+${Math.round(g*STAR_BONUS*100)} % de recettes) mais le parc repart de zéro.`,"C'est parti !",()=>{
-        const f=fresh(); f.stars=S.stars+g; f.seasons=S.seasons+1; f.total=S.total; f.buy=S.buy; f.seen=true; f.goal=S.goal; f.rating=S.rating; f.parades=S.parades; f.boostCd=S.boostCd; f.chests=S.chests; f.chestT=S.chestT; f.cards=S.cards; f.planes=S.planes; f.music=S.music; f.sfx=S.sfx; f.day=S.day; f.streak=S.streak; f.gfx=S.gfx; f.night=S.night; f.glass=S.glass; f.mg=S.mg; f.flow=S.flow; f.cz=S.cz; f.name=S.name; f.friends=S.friends; f.best=S.best; f.fgift=S.fgift; f.inv=S.inv; S=f; resetSim(); save(); closeSheet(); home(); }); }};
+        const f=fresh(); f.stars=S.stars+g; f.seasons=S.seasons+1; f.total=S.total; f.buy=S.buy; f.seen=true; f.goal=S.goal; f.rating=S.rating; f.parades=S.parades; f.boostCd=S.boostCd; f.chests=S.chests; f.chestT=S.chestT; f.cards=S.cards; f.planes=S.planes; f.music=S.music; f.sfx=S.sfx; f.day=S.day; f.streak=S.streak; f.gfx=S.gfx; f.night=S.night; f.glass=S.glass; f.mg=S.mg; f.flow=S.flow; f.cz=S.cz; f.invR=S.invR; f.tuto=S.tuto; f.name=S.name; f.friends=S.friends; f.best=S.best; f.fgift=S.fgift; f.inv=S.inv; S=f; resetSim(); save(); closeSheet(); home(); }); }};
 }
 const SHEETS={
-  park:  {t:'Parking', rows:()=>['cap','etage','road'].map(upRow), foot:"Le parking au sol est limité à 56 places : pour accueillir plus de monde, construis des étages (jusqu'à 4). Si le parking est complet, les voitures font demi-tour et la satisfaction baisse."},
+  park:  {t:'Parking', rows:()=>['cap','etage','lots','road'].map(upRow), foot:"Le parking principal est limité à 56 places par niveau : construis des étages (jusqu'à 4) et des parkings annexes de l'autre côté de la route (28 places par niveau chacun). Si le parking est complet, les voitures font demi-tour et la satisfaction baisse."},
   rpark: {t:'Entrée et parking Racing', rows:()=>['rcap','retage','rroad','rtick'].map(upRow), foot:"Le parc Racing a son propre parking, sa propre entrée et ses propres visiteurs, séparés de l'île Piko. Le billet se paie à la porte."},
   apark: {t:'Entrée et parking Aqua', rows:()=>['acap','aetage','aroad','atick'].map(upRow), foot:"Le parc Piko Aqua a son propre parking, sa propre entrée et ses propres visiteurs. Le billet se paie à la porte."},
   mpark: {t:'Entrée et parking Magie', rows:()=>['mcap','metage','mroad','mtick'].map(upRow), foot:"Le parc Piko Magie a son propre parking, sa propre entrée et ses propres visiteurs, qui arrivent par le pont du sud."},
@@ -2096,6 +2167,7 @@ const SHEETS={
         note:()=>{ const c=S.cards[k]||[0,0,0,0]; return RAR.map((r,q)=>`${r.n} ×${c[q]||0}`).join(' · '); }, btn:()=>null, act(){}}))],
     foot:'Chaque coffre donne une carte. Raretés : Commun +2 % (68 %), Rare +5 % (23 %), Épique +12 % (7,5 %), Légendaire +30 % (1,5 %). Les cartes se cumulent et sont conservées entre les saisons.'},
   hotel: {t:'Hôtel', rows:()=>['hotel'].map(upRow), foot:"L'hôtel rapporte des nuitées toutes les 10 secondes : plus de chambres et un prix plus élevé à chaque niveau, un étage de plus tous les 3 niveaux. Le taux de remplissage suit la satisfaction du parc."},
+  power: {t:'Centrale électrique', rows:()=>['power'].map(upRow), foot:"Chaque lieu construit consomme de l'électricité (2 kW, plus 1 kW par palier). Si la centrale ne produit pas assez, tous les manèges ralentissent : les files s'allongent et les recettes baissent."},
   worlds:{t:'Îles', rows:()=>[
       {ico:'🦔', name:()=>'Île Piko · parc principal', sub:()=>"Le parc d'attractions et l'hôtel", note:()=>'', btn:()=>({label:'Voir', cost:'aller sur place', ok:true}), act:()=>{ flyTo(0,600,1500); closeSheet(); }},
       ...[['aqua','🌊','Île Piko Aqua','Le parc aquatique : Toboggans Tornade, Piscine à Vagues, Rivière Tranquille',AQUA_COST],['magie','🪄','Île Piko Magie',"L'école des sorciers : balais volants, chaudron, hibou, château",MAGIE_COST],['f1','🏁','Île Piko Racing','Le parc des monoplaces : karts, simulateur, stand, grand circuit',F1_COST]].map(([p,ico,nm,sub,cost])=>(
@@ -2115,14 +2187,31 @@ const SHEETS={
     foot:"Six emplacements ✨ Déco sont répartis autour du lac : touche-les dans le parc pour y poser une statue, une fontaine, une horloge… Tes amis voient ton parc personnalisé quand ils te rendent visite."},
   deco:{t:'Décoration', rows:()=>{ const i=sel.i; return [{ico:'✨', name:()=>`Emplacement ${i+1} · ${ITEMS[S.cz.deco[i]||0]}`, sub:()=>'Choisis ce qui décore cet emplacement', note:()=>'Gratuit, modifiable à tout moment',
         btn:()=>({label:'Suivant', cost:`${(S.cz.deco[i]||0)+1} / ${ITEMS.length}`, ok:true}), act:()=>{ S.cz.deco[i]=((S.cz.deco[i]||0)+1)%ITEMS.length; fx(DECO[i][0],30,DECO[i][1],20); save(); }}]; }, foot:''},
+  menu:{t:'Menu', rows:()=>[], foot:`<div class="mgrid">
+      <button class="mi" data-go="chest">🎁<i id="mi-chest"></i><span>Coffres</span></button><button class="mi" data-go="arcade">🎮<span>Mini-jeux</span></button><button class="mi" data-go="worlds">🌍<span>Îles</span></button>
+      <button class="mi" data-go="sat">😀<span>Satisfaction</span></button><button class="mi" data-go="friends">👥<span>Amis</span></button><button class="mi" data-go="custom">🎨<span>Personnaliser</span></button>
+      <button class="mi" data-go="season">⭐<span>Saison</span></button><button class="mi" data-go="settings">⚙️<span>Paramètres</span></button><button class="mi" data-go="tuto">🎓<span>Tutoriel</span></button></div>`},
+  sat:{t:'Satisfaction', rows:()=>{
+      const F=[['ride','🎢','Plaisir des attractions','Chaque tour de manège rend le visiteur plus heureux'],['food','🍔','Repas','Un visiteur qui a mangé repart content : construis et améliore les restaurants'],
+        ['wc','🚻','Toilettes','Passer aux toilettes évite de repartir fâché'],['vip','⚡','Coupe-file','Les visiteurs qui doublent la file sont ravis'],
+        ['base','🧹','Accueil','Propreté du parc et régulation des flux (Bureaux)'],['cash','🎟️','Attente aux caisses','Trop d\'attente à l\'entrée : améliore les Caisses'],
+        ['wait','⏳','Attente dans les files','Files trop longues : monte les attractions de palier (plus de places), répare les pannes, améliore la centrale'],
+        ['quit','🚶','Files abandonnées','Des visiteurs quittent la file après trop d\'attente : même remède, ou régulation « Fluide »'],
+        ['nowc','🚫','Pas de toilettes libres','Des visiteurs repartent faute de toilettes : construis-en ou améliore-les'],['full','🈵','Attractions saturées','Tout est plein : construis de nouvelles attractions']];
+      const pts=k=>Math.round(SAT[k]*100), sg=n=>(n>0?'+':'')+n;
+      return [{ico:'😀', name:()=>`Satisfaction : ${Math.round(S.rating*100)} %`, sub:()=>`Elle multiplie les arrivées de visiteurs par ×${(0.5+0.9*S.rating).toFixed(2).replace('.',',')}. Un visiteur arrive avec 55 points, puis gagne ou perd des points pendant sa visite.`,
+        note:()=>`Voitures refoulées, parking plein : ${Math.round(refRate)} par minute. Ça ne fâche personne, mais ce sont des clients perdus.`, btn:()=>null, act(){}},
+        ...F.map(([k,ico,nm,adv])=>({ico, name:()=>`${nm} · ${sg(pts(k))} pts`, sub:()=>adv, note:()=>pts(k)<=-4?'⚠️ À corriger en priorité':pts(k)<0?'À surveiller':'', btn:()=>null, act(){}}))]; },
+    foot:"Points moyens par visiteur, mesurés sur ceux qui viennent de repartir. Les lignes négatives sont les causes de mécontentement."},
   friends:{t:'Amis', rows:()=>friendRows(), foot:"Le jeu n'a pas de serveur : chaque ami t'envoie son lien (ou son code) et tu l'ajoutes ici. Pour mettre à jour le classement, renvoyez-vous vos liens. Un cadeau par ami et par jour, 3 au maximum."},
   arcade:{t:"Salle d'arcade", rows:()=>['tir','memo','roue'].map(arcadeRow), foot:"Trois mini-jeux pour gagner de l'argent, des coffres et des sabliers. Les gains dépendent des revenus de ton parc."},
   settings:{t:'Paramètres', rows:()=>[
+      toggleRow('invR','🔄','Rotation inversée','Activé : la vue tourne dans le sens inverse du geste à deux doigts et du bouton 🔄'),
+      toggleRow('inv','🕹️','Déplacement inversé','Activé : la caméra avance dans le sens du doigt. Coupé : la carte suit le doigt'),
       toggleRow('music','🎵','Musique','Petite valse de fête foraine'),
       toggleRow('sfx','🔊','Bruitages',"Cris dans les manèges, chasses d'eau, caisses, avion, ambiance du parc"),
       {ico:'🖥️', name:()=>'Qualité graphique', sub:()=>'Auto baisse la finesse de l\'image si le jeu ralentit', note:()=>'', btn:()=>({label:{auto:'Auto',high:'Haute',low:'Basse'}[S.gfx], cost:'toucher pour changer', ok:true}),
        act:()=>{ S.gfx={auto:'high',high:'low',low:'auto'}[S.gfx]; applyGfx(); }},
-      toggleRow('inv','🕹️','Déplacement inversé','Activé : la caméra avance dans le sens du doigt. Coupé : la carte suit le doigt'),
       toggleRow('night','🌙','Cycle jour / nuit','La nuit tombe toutes les 5 minutes et fait briller les éclairages'),
       {ico:'💾', name:()=>'Exporter ma partie', sub:()=>'Copie un code à coller sur un autre appareil', note:()=>'', btn:()=>({label:'Exporter', cost:'copier le code', ok:true}), act:exportSave},
       {ico:'📥', name:()=>'Importer une partie', sub:()=>'Remplace la partie de cet appareil par celle du code', note:()=>'', btn:()=>({label:'Importer', cost:'coller un code', ok:true}), act:importSave}],
@@ -2133,7 +2222,7 @@ function openSheet(s){
   const def = s.kind==='ven' ? {t:V[s.i].kind==='ride'?'Attraction':V[s.i].kind==='resto'?'Restaurant':'Toilettes', rows:()=>[venRow(s.i)], foot:''} : SHEETS[s.kind];
   rows=def.rows();
   $('#sh-ttl').textContent=def.t;
-  document.querySelectorAll('#sh-top [data-buy]').forEach(b=>b.style.display=['season','chest','settings','worlds','arcade','friends','custom','deco'].includes(s.kind)?'none':'');
+  document.querySelectorAll('#sh-top [data-buy]').forEach(b=>b.style.display=['season','chest','settings','worlds','arcade','friends','custom','deco','menu','sat','power'].includes(s.kind)?'none':'');
   $('#sh-rows').innerHTML = rows.map((r,k)=>`<div class="row"><div class="ico">${r.ico}</div><div class="grow"><div class="ttl"></div><div class="sub"></div><div class="note"></div></div><button class="buy" data-row="${k}"><span class="l"></span><span class="c"></span></button></div>`).join('');
   rowEls=[...document.querySelectorAll('#sh-rows .row')].map(e=>({ttl:e.querySelector('.ttl'),sub:e.querySelector('.sub'),note:e.querySelector('.note'),btn:e.querySelector('.buy'),l:e.querySelector('.l'),c:e.querySelector('.c')}));
   $('#sh-foot').innerHTML=def.foot;
@@ -2151,6 +2240,7 @@ function updateSheet(){
 }
 $('#sheet').addEventListener('click',ev=>{
   const t=ev.target.closest('button'); if(!t) return;
+  if(t.dataset.go){ const go=t.dataset.go; if(go==='tuto'){ closeSheet(); startTuto(); } else openSheet({kind:go}); return; }
   if(t.dataset.buy) S.buy = t.dataset.buy==='max'?'max':+t.dataset.buy;
   else if(t.dataset.row!==undefined){ if(visiting&&sel.kind!=='settings'){ toast('👀 Tu es en visite : touche le bandeau orange pour revenir chez toi',3000); return; } const m=S.money; rows[+t.dataset.row].act(); if(S.money<m) sfx('coin'); }
   else if(t.id==='sh-x') closeSheet();
@@ -2159,7 +2249,11 @@ $('#sheet').addEventListener('click',ev=>{
 });
 $('#f-season').onclick = () => sel&&sel.kind==='season' ? closeSheet() : openSheet({kind:'season'});
 $('#f-home').onclick = home;
-$('#f-rot').onclick = () => { cam.yawT+=Math.PI/4; };
+$('#f-rot').onclick = () => { cam.yawT+=Math.PI/4*(S.invR?-1:1); };
+$('#f-menu').onclick = () => sel&&sel.kind==='menu' ? closeSheet() : openSheet({kind:'menu'});
+$('#f-cam').onclick = () => $('#fabsL').classList.toggle('open');
+$('#joy').onclick = () => openSheet({kind:'sat'});
+$('#pw').onclick = () => { flyTo(POWER.x,POWER.z,900); openSheet({kind:'power'}); };
 $('#f-custom').onclick = () => sel&&sel.kind==='custom' ? closeSheet() : openSheet({kind:'custom'});
 $('#f-friends').onclick = () => sel&&sel.kind==='friends' ? closeSheet() : openSheet({kind:'friends'});
 $('#f-tilt').onclick = () => { cam.pitch = cam.pitch>.95 ? .45 : cam.pitch>.6 ? 1.15 : .74; };
@@ -2183,7 +2277,8 @@ function hud(){
   if(t<S.boostEnd){ setT(fb,Math.ceil((S.boostEnd-t)/1000)+' s'); cls(fb,'on'); }
   else if(t<S.boostCd){ const r=(S.boostCd-t)/1000; setT(fb,r>=60?Math.ceil(r/60)+' min':Math.ceil(r)+' s'); cls(fb,'cd'); }
   else { setT(fb,'🎉'); cls(fb,''); }
-  setT($('#chest-n'), S.chests?String(S.chests):'');
+  setT($('#chest-n'), S.chests?String(S.chests):''); setT($('#menu-n'), S.chests?String(S.chests):''); { const mc=$('#mi-chest'); if(mc) setT(mc,S.chests?String(S.chests):''); }
+  setT($('#pw'),`⚡ ${PDEM}/${powerCap(S.up.power)}`); cls($('#pw'),'chip'+(PF<1?' bad':''));
   if(AC) ambG.gain.value=Math.min(.07,visitors.length/1400);
   setT($('#speaker'),spkTxt);
   const ec=$('#evchip'); if(evK){ ec.style.display=''; setT(ec,`${EVENTS[evK].e} ${EVENTS[evK].n} · ${Math.max(0,Math.ceil((evEnd-Date.now())/1000))} s`); } else if(ec.style.display!=='none') ec.style.display='none';
@@ -2305,6 +2400,26 @@ function friendRows(){
   return R;
 }
 
+/* ================= Tutoriel de départ ================= */
+const TUTO=[
+  {t:'🦔 Bienvenue !', d:"Tu diriges un parc d'attractions. Les visiteurs arrivent en voiture, paient leur billet, font la queue aux manèges et te rapportent de l'argent. À toi de faire grandir le parc.", c:[0,600,1300]},
+  {t:'🚗 Le parking', d:"Chaque voiture garée, c'est un visiteur. Quand le parking est plein, les voitures suivantes font demi-tour : agrandis-le, ajoute des étages, puis des parkings annexes de l'autre côté de la route.", c:[0,1000,1000]},
+  {t:'🎟️ Les caisses', d:"Les visiteurs paient leur billet à la caisse. Trop d'attente ici et ils entrent déjà de mauvaise humeur : améliore les caisses et le prix du billet.", c:[0,740,620]},
+  {t:'🎢 Les attractions', d:"Touche une attraction pour l'améliorer. Aux niveaux 10, 25, 50, 100… elle franchit un palier : recette doublée, plus de places, et elle grandit (décors, lumières, loopings).", c:[-360,560,700]},
+  {t:'😀 La satisfaction', d:"Files trop longues, pas de toilettes, pannes : les visiteurs repartent fâchés et moins de monde vient. Touche le 😀 en haut de l'écran pour voir exactement ce qui plaît et ce qui fâche.", c:[0,300,1300]},
+  {t:'⚡ La centrale', d:"Chaque bâtiment consomme de l'électricité. Si la centrale ne produit pas assez, tous les manèges ralentissent. Surveille le compteur ⚡ en haut.", c:[1180,850,800]},
+  {t:'☰ Le menu', d:"Le bouton ☰ regroupe tout : coffres, mini-jeux, amis, personnalisation, saison et réglages. Le bouton 🎥 règle la vue. La pastille en haut te donne toujours le prochain objectif.", c:[0,600,1300]},
+  {t:'🌍 Quatre îles', d:"Ton parc est sur l'île Piko. Trois autres îles t'attendent, chacune avec son parc : Piko Aqua à l'ouest, Piko Magie au sud, Piko Racing à l'est. La caméra te les montre. On les ouvre depuis le menu ☰, bouton Îles.", c:[0,1300,3600], tour:[[-3150,700,2200],[0,2650,2200],[3150,700,2200],[0,1300,3600]]},
+  {t:'🚀 À toi de jouer !', d:"Commence par améliorer la Chenille Rigolote et agrandir le parking. Tu peux revoir ce tutoriel à tout moment dans le menu ☰.", c:[0,600,1300]},
+];
+let tuI=-1;
+function showTuto(){ const s=TUTO[tuI]; $('#tu-t').textContent=s.t; $('#tu-d').textContent=s.d; $('#tu-n').textContent=`${tuI+1} / ${TUTO.length}`; $('#tu-next').textContent=tuI===TUTO.length-1?"C'est parti !":'Suivant'; cam.yawT=0; cam.pitch=.74; flyTo(s.c[0],s.c[1],s.c[2]);
+  if(s.tour){ const me=tuI; s.tour.forEach((q,k)=>setTimeout(()=>{ if(tuI===me) flyTo(q[0],q[1],q[2]); },1500+k*2300)); } }
+function startTuto(){ closeSheet(); tuI=0; $('#tuto').classList.add('on'); $('#app').classList.add('tuto'); showTuto(); }
+function endTuto(){ tuI=-1; $('#tuto').classList.remove('on'); $('#app').classList.remove('tuto'); S.tuto=true; save(); home(); }
+$('#tu-next').onclick=()=>{ if(tuI>=TUTO.length-1) endTuto(); else { tuI++; showTuto(); } };
+$('#tu-skip').onclick=endTuto;
+
 /* ================= Mini-jeux (salle d'arcade) ================= */
 const MG={
   tir:{e:'🌰', n:'Tir aux noisettes', d:"Touche les noisettes avant qu'elles disparaissent. 20 secondes !", cd:180},
@@ -2313,7 +2428,7 @@ const MG={
 };
 let mgOpen=false, mgTimer=null, mgStop=null, mgLock=false;
 const mgLeft=k=>Math.max(0,((S.mg[k]||0)+MG[k].cd*1000-Date.now())/1000);
-const mgReward=sec=>Math.max(60+S.total*.0005,S.rate*sec);
+const mgReward=sec=>Math.max(60,S.rate*sec);
 function arcadeRow(k){
   const m=MG[k];
   return {ico:m.e, name:()=>m.n, sub:()=>m.d, note:()=>mgLeft(k)>0?`Prochaine partie gratuite dans ${fmtTime(mgLeft(k))}`:'Disponible !',
@@ -2329,7 +2444,7 @@ $('#mg-x').onclick=mgClose;
 function mgResult(k,title,txt,reward,extra){
   S.mg[k]=Date.now(); mgLock=false; const body=$('#mg-body'), parts=[reward>0?`+${fmt(reward)} €`:null, extra?extra.label:null].filter(Boolean).join(' · ');
   body.innerHTML=`<div class="mgcard"><div style="font-size:44px">${MG[k].e}</div><h3>${title}</h3><p>${txt}<br><b style="color:var(--leaf);font-size:19px">${parts}</b></p><button class="buy wide" id="mg-ok">Récupérer</button></div>`;
-  $('#mg-ok').onclick=()=>{ if(reward>0) earn(reward); if(extra) extra.apply(); sfx('coin'); mgClose(); toast(`${MG[k].e} ${parts}`,2800); save(); };
+  $('#mg-ok').onclick=()=>{ if(reward>0) bonus(reward); if(extra) extra.apply(); sfx('coin'); mgClose(); toast(`${MG[k].e} ${parts}`,2800); save(); };
 }
 function mgTir(body){
   body.innerHTML='<div id="mg-field"></div>'; const F=$('#mg-field'); let score=0, t=20, sp=620, acc=0;
@@ -2339,7 +2454,7 @@ function mgTir(body){
     b.onpointerdown=e=>{ e.stopPropagation(); score+=gold?3:1; upd(); sfx('ding'); b.remove(); };
     F.appendChild(b); setTimeout(()=>b.remove(),gold?900:1200); };
   mgTimer=setInterval(()=>{ t-=.1; acc+=100; if(acc>=sp){ acc=0; spawn(); sp=Math.max(330,sp-8); } upd();
-    if(t<=0){ clearInterval(mgTimer); S.best.tir=Math.max(S.best.tir||0,score); mgResult('tir',score>=20?"Tireur d'élite !":'Pas mal !',`Tu as ramassé ${score} points.`,mgReward(6*score),score>=25?{label:'+1 coffre 🎁',apply:()=>{ S.chests++; }}:null); } },100);
+    if(t<=0){ clearInterval(mgTimer); S.best.tir=Math.max(S.best.tir||0,score); mgResult('tir',score>=20?"Tireur d'élite !":'Pas mal !',`Tu as ramassé ${score} points.`,mgReward(2*score),score>=25?{label:'+1 coffre 🎁',apply:()=>{ S.chests++; }}:null); } },100);
 }
 function mgMemo(body){
   const COL=['#e0531f','#3b82c4','#2aa876','#f6c343'], FR=[262,330,392,523];
@@ -2353,12 +2468,12 @@ function mgMemo(body){
   pads.forEach(p=>{ p.onpointerdown=()=>{ if(!accept) return; const i=+p.dataset.i; lit(i,200);
     if(i!==seq[pos]){ accept=false; const rounds=seq.length-1;
       S.best.memo=Math.max(S.best.memo||0,rounds);
-      mgResult('memo',rounds>=6?'Mémoire de hérisson !':'Raté !',`Tu as réussi ${rounds} manche${rounds>1?'s':''}.`,mgReward(25*rounds),rounds>=7?{label:'+1 sablier ⏳',apply:()=>{ S.glass++; }}:null); return; }
+      mgResult('memo',rounds>=6?'Mémoire de hérisson !':'Raté !',`Tu as réussi ${rounds} manche${rounds>1?'s':''}.`,mgReward(8*rounds),rounds>=7?{label:'+1 sablier ⏳',apply:()=>{ S.glass++; }}:null); return; }
     pos++; if(pos>=seq.length){ accept=false; msg.textContent='Bravo !'; setTimeout(play,800); } }; });
   setTimeout(play,600);
 }
 function mgRoue(body){
-  const P=[['💰','30 s de revenus',24,()=>mgReward(30)],['💰','2 min de revenus',20,()=>mgReward(120)],['🎁','un coffre',12,0],['💰','10 min de revenus',12,()=>mgReward(600)],['⏳','un sablier',8,0],['💰','1 min de revenus',14,()=>mgReward(60)],['🎉','une parade (recettes ×2 pendant 1 min)',6,0],['💎','le JACKPOT : 30 min de revenus',4,()=>mgReward(1800)]];
+  const P=[['💰','20 s de revenus',24,()=>mgReward(20)],['💰','1 min de revenus',20,()=>mgReward(60)],['🎁','un coffre',12,0],['💰','4 min de revenus',12,()=>mgReward(240)],['⏳','un sablier',8,0],['💰','40 s de revenus',14,()=>mgReward(40)],['🎉','une parade (recettes ×2 pendant 1 min)',6,0],['💎','le JACKPOT : 10 min de revenus',4,()=>mgReward(600)]];
   const COL=['#f6c343','#e0569b','#3b82c4','#2aa876','#8e5bd0','#ff8c42','#e0531f','#3fb7c9'];
   body.innerHTML=`<div class="wheelbox"><div class="ptr">🔻</div><div class="wheel" id="wheel" style="background:conic-gradient(${COL.map((c,i)=>`${c} ${i*45}deg ${(i+1)*45}deg`).join(',')})">${P.map((p,i)=>`<i style="transform:rotate(${i*45+22.5}deg) translateY(-98px) rotate(${-(i*45+22.5)}deg) translate(-50%,-50%)">${p[0]}</i>`).join('')}</div></div><button class="buy wide" id="spin" style="max-width:260px;margin-top:26px">Lancer la roue</button>`;
   $('#spin').onclick=()=>{ $('#spin').disabled=true; mgLock=true; let r=Math.random()*100, i=0; for(;i<7;i++){ if(r<P[i][2]) break; r-=P[i][2]; }
@@ -2370,7 +2485,7 @@ function mgRoue(body){
 
 /* ================= Boucle ================= */
 let prev=performance.now(), saveT=0;
-let fAvg=1/60, fT=0;
+let fAvg=1/60, fT=0, fN=0;
 function frame(now){
   let dt=(now-prev)/1000; prev=now;
   if(S.gfx==='auto' && dt<.25){ fAvg=fAvg*.96+dt*.04; fT+=dt;
@@ -2380,8 +2495,8 @@ function frame(now){
   saveT+=dt; if(saveT>5){ saveT=0; save(); }
   const d2=Math.min(dt,.25); tickGift(d2,now); tickEvents(d2);
   S.chestT+=d2; if(S.chestT>=CHEST_EVERY){ S.chestT=0; if(S.chests<5){ S.chests++; toast('🎁 Un coffre gratuit t\'attend !',3000); } } if(boostOn()&&Math.random()<d2*5){ const n=NODES[RING[Math.random()*8|0]]; fx(n.x,30,n.z,14); }
-  if(!mgOpen){ applyCam(); syncScene(now); syncAgents(now); syncConf(d2); renderer.render(scene,camera); syncLabels(); syncPops(Math.min(dt,.25)); }
-  hud(); updateSheet();
+  if(!mgOpen){ applyCam(); syncScene(now); syncAgents(now); syncConf(d2); renderer.render(scene,camera); if(fN%2===0) syncLabels(); syncPops(Math.min(dt,.25)); }
+  if(fN++%3===0){ hud(); updateSheet(); }      // textes de l'interface : 20 fois par seconde suffisent
   requestAnimationFrame(frame);
 }
 window.addEventListener('resize',()=>{ resize(); clampCam(); });
@@ -2397,7 +2512,7 @@ load(); resetSim(); applyGfx(); resize(); home(); cam.yaw=cam.yawT;
   // Fusion des objets fixes : files d'attente, chantiers, enseignes, drapeaux, décors, dalles de parking, décor posé au sol
   vg.forEach(g=>{ mergeTree(g.built); mergeTree(g.site); mergeTree(g.marq); g.stages.forEach(s=>mergeTree(s));
     g.fb=[0,1,2].map(k=>{ const b=new THREE.Group(); g.root.add(b); g.flags.slice([0,3,7][k],[3,7,11][k]).forEach(fl=>b.add(fl)); mergeTree(b); return b; }); });
-  [deckP,deckR,deckA,deckM].forEach(d=>d.floors.forEach(fl=>mergeTree(fl))); mergeTree(aquaDeco); mergeTree(magieDeco); shopG.userData.dyn='self'; decoSpots.forEach(s=>s.items.forEach(it=>mergeTree(it)));
+  [deckP,deckR,deckA,deckM,deckB,deckC].forEach(d=>d.floors.forEach(fl=>mergeTree(fl))); mergeTree(aquaDeco); mergeTree(magieDeco); shopG.userData.dyn='self'; decoSpots.forEach(s=>s.items.forEach(it=>mergeTree(it)));
   mergeTree(scene,true);
   const freeze=o=>{ if(o.userData.dyn===1) return; if(o.userData.dyn!=='self'){ o.updateMatrix(); o.matrixAutoUpdate=false; } o.children.forEach(freeze); };
   scene.children.forEach(freeze); }
@@ -2406,12 +2521,12 @@ load(); resetSim(); applyGfx(); resize(); home(); cam.yaw=cam.yawT;
 { const dk=d=>d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(), today=dk(new Date()), y=new Date(); y.setDate(y.getDate()-1);
   if(S.day!==today){
     S.streak = S.day===dk(y) ? S.streak+1 : 1; S.day=today;
-    const n=[1,1,2,1,2,2,3][(S.streak-1)%7], cash=Math.max(50,S.rate*300*((S.streak-1)%7+1)); S.chests+=n; S.glass++; S.money+=cash; S.run+=cash; S.total+=cash; save();
+    const n=[1,1,2,1,2,2,3][(S.streak-1)%7], cash=Math.max(50,S.rate*120*((S.streak-1)%7+1)); S.chests+=n; S.glass++; S.money+=cash; S.run+=cash; S.total+=cash; save();
     modal('🎁','Cadeau du jour',`Jour ${S.streak} d'affilée<br><b style="color:var(--leaf);font-size:18px">+${n} coffre${n>1?'s':''} · +1 ⏳ · +${fmt(cash)} €</b><br><small>Reviens demain : le 7e jour offre 3 coffres.</small>`,'Merci !');
   } }
 if(location.hash.indexOf('#ami=')===0){ const fr=parseCard(location.hash); try{ history.replaceState(null,'',location.pathname); }catch(e){}
   if(fr) modal('👥','Nouvel ami',`Ajouter <b>${fr.n}</b> à tes amis ?<br><small>Tu pourras visiter son parc et comparer vos scores.</small>`,'Ajouter',()=>{ addFriend(fr); openSheet({kind:'friends'}); }); }
-if(!S.seen){ S.seen=true; toast('Glisse pour avancer · 2 doigts : zoom, rotation, inclinaison', 5000); }
+S.seen=true; (function tryTuto(){ if(S.tuto||visiting) return; if($('#modal').classList.contains('on')||$('#splash')) return setTimeout(tryTuto,900); startTuto(); })();
 requestAnimationFrame(frame);
 // Écran de chargement : on le retire une fois le parc affiché (au moins 1,6 s à l'écran)
 requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{ const sp=$('#splash'); sp.classList.add('done'); setTimeout(()=>sp.remove(),650); }, Math.max(0,1600-performance.now()))));
