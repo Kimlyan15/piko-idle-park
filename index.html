@@ -2254,6 +2254,35 @@ const SHEETS={
        btn:()=>S.up[p]?{label:'Voir', cost:'aller sur place', ok:true}:{label:'Ouvrir', cost:fmt(cost)+' €', ok:S.money>=cost&&isleOk(p)},
        act:()=>{ const I=ISLS[PK[p].isl]; if(!S.up[p]){ if(S.money<cost||!isleOk(p)) return; S.money-=cost; S.up[p]=1; fx(I.cx,80,I.cz,110); sfx('fanfare'); toast(`${ico} ${nm} ouvre ses portes !`,3500); } flyTo(I.cx,I.cz-160,1500); closeSheet(); }}))],
     foot:"Quatre îles, quatre parcs reliés par les ponts. Pour ouvrir une île, il faut l'argent, assez de lieux construits sur l'île Piko et des visiteurs satisfaits."},
+  custom:{t:'Personnaliser mon parc', rows:()=>{ const cyc=(ico,nm,key,list,sub)=>({ico, name:()=>`${nm} · ${list[S.cz[key]||0].n||list[S.cz[key]||0]}`, sub:()=>sub, note:()=>'',
+        btn:()=>({label:'Changer', cost:`${(S.cz[key]||0)+1} / ${list.length}`, ok:true}), act:()=>{ S.cz[key]=((S.cz[key]||0)+1)%list.length; save(); }});
+      return [
+        {ico:'✏️', name:()=>`Nom du parc · ${S.cz.name||'Piko Idle Park'}`, sub:()=>"S'affiche sur le portail d'entrée et en haut de l'écran", note:()=>'', btn:()=>({label:'Renommer', cost:'18 lettres max', ok:true}),
+         act:()=>{ const n=prompt('Nom de ton parc (18 caractères max) :',S.cz.name||''); if(n!==null){ S.cz.name=esc(n).trim().slice(0,18); save(); } }},
+        cyc('🎨','Couleurs','pal',PALS,'Portail, toits, drapeaux et allées du parc'),
+        cyc('🍂','Saison','season',SEAS,"Pelouse et feuillage des arbres de l'île Piko"),
+        cyc('🎩','Mascotte','mascot',HATS,'Le chapeau de Piko')]; },
+    foot:"Six emplacements ✨ Déco sont répartis autour du lac : touche-les dans le parc pour y poser une statue, une fontaine, une horloge… Tes amis voient ton parc personnalisé quand ils te rendent visite."},
+  deco:{t:'Décoration', rows:()=>{ const i=sel.i; return [{ico:'✨', name:()=>`Emplacement ${i+1} · ${ITEMS[S.cz.deco[i]||0]}`, sub:()=>'Choisis ce qui décore cet emplacement', note:()=>'Gratuit, modifiable à tout moment',
+        btn:()=>({label:'Suivant', cost:`${(S.cz.deco[i]||0)+1} / ${ITEMS.length}`, ok:true}), act:()=>{ S.cz.deco[i]=((S.cz.deco[i]||0)+1)%ITEMS.length; fx(DECO[i][0],30,DECO[i][1],20); save(); }}]; }, foot:''},
+  menu:{t:'Menu', rows:()=>[], foot:`<div class="mgrid">
+      <button class="mi" data-go="chest">🎁<i id="mi-chest"></i><span>Coffres</span></button><button class="mi" data-go="arcade">🎮<span>Mini-jeux</span></button><button class="mi" data-go="worlds">🌍<span>Îles</span></button>
+      <button class="mi" data-go="sat">😀<span>Satisfaction</span></button><button class="mi" data-go="friends">👥<span>Amis</span></button><button class="mi" data-go="custom">🎨<span>Personnaliser</span></button>
+      <button class="mi" data-go="season">⭐<span>Saison</span></button><button class="mi" data-go="settings">⚙️<span>Paramètres</span></button><button class="mi" data-go="tuto">🎓<span>Tutoriel</span></button></div>`},
+  sat:{t:'Satisfaction', rows:()=>{
+      const F=[['ride','🎢','Plaisir des attractions','Chaque tour de manège rend le visiteur plus heureux'],['food','🍔','Repas','Un visiteur qui a mangé repart content : construis et améliore les restaurants'],
+        ['wc','🚻','Toilettes','Passer aux toilettes évite de repartir fâché'],['vip','⚡','Coupe-file','Les visiteurs qui doublent la file sont ravis'],
+        ['base','🧹','Accueil','Propreté du parc et régulation des flux (Bureaux)'],['cash','🎟️','Attente aux caisses','Trop d\'attente à l\'entrée : améliore les Caisses'],
+        ['wait','⏳','Attente dans les files','Files trop longues : monte les attractions de palier (plus de places), répare les pannes, améliore la centrale'],
+        ['quit','🚶','Files abandonnées','Des visiteurs quittent la file après trop d\'attente : même remède, ou régulation « Fluide »'],
+        ['nowc','🚫','Pas de toilettes libres','Des visiteurs repartent faute de toilettes : construis-en ou améliore-les'],['full','🈵','Attractions saturées','Tout est plein : construis de nouvelles attractions'],
+        ['dirt','🗑️','Parc sale','Trop de visiteurs pour l\'équipe d\'entretien : améliore la Propreté (Bureaux)'],['price','🏷️','Prix du billet','Dépend de la politique de prix (Entrée et caisses)']];
+      const pts=k=>Math.round(SAT[k]*100), sg=n=>(n>0?'+':'')+n;
+      return [{ico:'😀', name:()=>`Satisfaction : ${Math.round(S.rating*100)} %`, sub:()=>`Elle multiplie les arrivées de visiteurs par ×${(0.3+1.1*S.rating).toFixed(2).replace('.',',')}. Un visiteur arrive avec 55 points, puis gagne ou perd des points pendant sa visite.`,
+        note:()=>`Voitures refoulées, parking plein : ${Math.round(refRate)} par minute. Ça ne fâche personne, mais ce sont des clients perdus.`, btn:()=>null, act(){}},
+        ...F.map(([k,ico,nm,adv])=>({ico, name:()=>`${nm} · ${sg(pts(k))} pts`, sub:()=>adv, note:()=>pts(k)<=-4?'⚠️ À corriger en priorité':pts(k)<0?'À surveiller':'', btn:()=>null, act(){}}))]; },
+    foot:"Points moyens par visiteur, mesurés sur ceux qui viennent de repartir. Les lignes négatives sont les causes de mécontentement."},
+  friends:{t:'Amis', rows:()=>friendRows(), foot:"Le jeu n'a pas de serveur : chaque ami t'envoie son lien (ou son code) et tu l'ajoutes ici. Pour mettre à jour le classement, renvoyez-vous vos liens. Un cadeau par ami et par jour, 3 au maximum."},
   arcade:{t:"Salle d'arcade", rows:()=>['tir','memo','roue'].map(arcadeRow), foot:"Trois mini-jeux pour gagner de l'argent, des coffres et des sabliers. Les gains dépendent des revenus de ton parc."},
   settings:{t:'Paramètres', rows:()=>[
       toggleRow('invR','🔄','Rotation inversée','Activé : la vue tourne dans le sens inverse du geste à deux doigts et du bouton 🔄'),
@@ -2537,6 +2566,10 @@ function mgRoue(body){
 let prev=performance.now(), saveT=0;
 let fAvg=1/60, fT=0, fN=0;
 function frame(now){
+  requestAnimationFrame(frame);
+  try{ frameBody(now); }catch(e){ if(!frame.err){ frame.err=1; console.error(e); } }
+}
+function frameBody(now){
   let dt=(now-prev)/1000; prev=now;
   if(S.gfx==='auto' && dt<.25){ fAvg=fAvg*.96+dt*.04; fT+=dt;
     if(fT>3){ fT=0; if(fAvg>1/38 && curPR>.76){ curPR=Math.max(.75,curPR-.25); renderer.setPixelRatio(curPR); fAvg=1/60; } } }
@@ -2547,7 +2580,6 @@ function frame(now){
   S.chestT+=d2; if(S.chestT>=CHEST_EVERY){ S.chestT=0; if(S.chests<5){ S.chests++; toast('🎁 Un coffre gratuit t\'attend !',3000); } } if(boostOn()&&Math.random()<d2*5){ const n=NODES[RING[Math.random()*8|0]]; fx(n.x,30,n.z,14); }
   if(!mgOpen){ applyCam(); syncScene(now); syncAgents(now); syncConf(d2); renderer.render(scene,camera); if(fN%2===0) syncLabels(); syncPops(Math.min(dt,.25)); }
   if(fN++%3===0){ hud(); updateSheet(); }      // textes de l'interface : 20 fois par seconde suffisent
-  requestAnimationFrame(frame);
 }
 window.addEventListener('resize',()=>{ resize(); clampCam(); });
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) save(); });
@@ -2579,7 +2611,9 @@ if(location.hash.indexOf('#ami=')===0){ const fr=parseCard(location.hash); try{ 
 S.seen=true; (function tryTuto(){ if(S.tuto||visiting) return; if($('#modal').classList.contains('on')||$('#splash')) return setTimeout(tryTuto,900); startTuto(); })();
 requestAnimationFrame(frame);
 // Écran de chargement : on le retire une fois le parc affiché (au moins 1,6 s à l'écran)
-requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{ const sp=$('#splash'); sp.classList.add('done'); setTimeout(()=>sp.remove(),650); }, Math.max(0,1600-performance.now()))));
+function hideSplash(){ const sp=$('#splash'); if(!sp||sp.classList.contains('done')) return; sp.classList.add('done'); setTimeout(()=>sp.remove(),650); }
+requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(hideSplash, Math.max(0,1600-performance.now()))));
+setTimeout(hideSplash,4500);      // secours : on ne reste jamais bloqué sur l'écran de chargement
 </script>
 </body>
 </html>
