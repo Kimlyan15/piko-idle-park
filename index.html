@@ -350,14 +350,15 @@ const OFFICE={x:640,z:800,r:95}, MAINT={x:-650,z:610,r:78};
 
 /* ================= État sauvegardé ================= */
 function fresh(){
-  return {money:10, run:0, total:0, stars:0, seasons:0, buy:1, rate:0, last:Date.now(), seen:false, rating:.5, goal:0, parades:0, boostEnd:0, boostCd:0, chests:1, chestT:0, day:'', streak:0, cards:{}, planes:0, music:true, sfx:true, gfx:'auto', night:true, invR:true, tuto:false, price:1, flow:1, glass:0, mg:{}, turboEnd:0, name:'', friends:[], best:{tir:0,memo:0}, fgift:{}, inv:true, cz:{name:'', pal:0, season:0, mascot:0, deco:[0,0,0,0,0,0]},
+  return {money:10, run:0, total:0, stars:0, seasons:0, buy:1, rate:0, last:Date.now(), seen:false, rating:.5, goal:0, parades:0, boostEnd:0, boostCd:0, chests:1, chestT:0, day:'', streak:0, cards:{}, planes:0, music:true, sfx:true, gfx:'auto', night:true, invR:false, ctl:2, tuto:false, price:1, flow:1, glass:0, mg:{}, turboEnd:0, name:'', friends:[], best:{tir:0,memo:0}, fgift:{}, inv:true, cz:{name:'', pal:0, season:0, mascot:0, deco:[0,0,0,0,0,0]},
     up:{cap:0, road:0, caisse:0, tick:0, pub:0, gest:0, tech:0, hotel:0, aqua:0, etage:0, fast:0, f1:0, rcap:0, rroad:0, rtick:0, retage:0, acap:0, aroad:0, atick:0, aetage:0, lots:0, power:0, magie:0, mcap:0, mroad:0, mtick:0, metage:0, clean:0, form:0, shop:0, night:0}, lv:V.map((_,i)=>i===0?1:0)};
 }
 let S = fresh(), visiting=null, Sback=null;
 function load(){
   try{
     const d = (OLD_KEYS.forEach(k=>localStorage.removeItem(k)), JSON.parse(localStorage.getItem(SAVE_KEY)));
-    if(d && d.lv){ S = Object.assign(fresh(), d); S.up = Object.assign(fresh().up, d.up); S.lv = V.map((_,i)=>d.lv[i]||(i===0?1:0)); }
+    if(d && d.lv){ if(d.ctl!==2){ d.inv=true; d.invR=false; d.ctl=2; }      // commandes remises au réglage normal
+      S = Object.assign(fresh(), d); S.up = Object.assign(fresh().up, d.up); S.lv = V.map((_,i)=>d.lv[i]||(i===0?1:0)); }
   }catch(e){}
 }
 function save(){ if(visiting) return; S.last = Date.now(); try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
@@ -1806,14 +1807,14 @@ function applyCam(){
   camera.position.set(cam.x+Math.sin(cam.yaw)*c, Math.sin(cam.pitch)*cam.dist, cam.z+Math.cos(cam.yaw)*c);
   camera.lookAt(cam.x,0,cam.z);
 }
-const pts=new Map(); let moved=0, downT=0, pinch=0, pang=0, pmy=0;
+const pts=new Map(); let moved=0, downT=0, pinch=0, pang=0, pmy=0, g2=null;
 function panBy(dx,dy){
   if(S.inv){ dx=-dx; dy=-dy; }            // déplacement inversé : on pousse la caméra dans le sens du doigt
-  const s=2*cam.dist*Math.tan(camera.fov*Math.PI/360)/vh, f=dy*s/Math.sin(cam.pitch);
+  const s=2*cam.dist*Math.tan(camera.fov*Math.PI/360)/vh, f=dy*s*Math.min(1.5,1/Math.sin(cam.pitch));
   cam.x-=Math.cos(cam.yaw)*dx*s+Math.sin(cam.yaw)*f; cam.z-=-Math.sin(cam.yaw)*dx*s+Math.cos(cam.yaw)*f; clampCam();
 }
 cv.addEventListener('pointerdown',e=>{
-  cam.fly=null; cv.setPointerCapture(e.pointerId); pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  cam.fly=null; try{ cv.setPointerCapture(e.pointerId); }catch(_){} pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pts.size===1){ moved=0; downT=performance.now(); } pinch=0;
 });
 cv.addEventListener('pointermove',e=>{
@@ -1825,7 +1826,13 @@ cv.addEventListener('pointermove',e=>{
   } else if(pts.size===2){
     const [a,b]=[...pts.values()], d=Math.hypot(a.x-b.x,a.y-b.y), ang=Math.atan2(b.y-a.y,b.x-a.x);
     const my=(a.y+b.y)/2;
-    if(pinch){ cam.pitch=clampPitch(cam.pitch+(my-pmy)*.005); cam.dist*=pinch/d; let da=ang-pang; if(da>Math.PI) da-=Math.PI*2; if(da<-Math.PI) da+=Math.PI*2; cam.yawT-=da*(S.invR?-1:1); cam.yaw=cam.yawT; clampCam(); }
+    const wrap=x=>x>Math.PI?x-Math.PI*2:x<-Math.PI?x+Math.PI*2:x;
+    if(!pinch) g2={d0:d,a0:ang,my0:my,mode:''};
+    else {
+      if(!g2.mode){ if(Math.abs(d-g2.d0)>12||Math.abs(wrap(ang-g2.a0))>.14) g2.mode='zr'; else if(Math.abs(my-g2.my0)>18) g2.mode='tilt'; }
+      if(g2.mode==='tilt') cam.pitch=clampPitch(cam.pitch+(my-pmy)*.005);
+      else if(g2.mode==='zr'){ cam.dist*=pinch/d; cam.yawT-=wrap(ang-pang)*(S.invR?-1:1); cam.yaw=cam.yawT; clampCam(); }
+    }
     pinch=d; pang=ang; pmy=my; moved=99;
   }
 });
@@ -2222,7 +2229,7 @@ function seasonRow(){
     btn:()=>{ const g=starsGain(); return {label:'Lancer', cost:'+'+g+' ⭐', ok:g>=1}; },
     act:()=>{ const g=starsGain(); if(g<1) return;
       modal('⭐','Nouvelle saison ?',`Tu gagnes <b>${g} étoile${g>1?'s':''}</b> (+${Math.round(g*STAR_BONUS*100)} % de recettes) mais le parc repart de zéro.`,"C'est parti !",()=>{
-        const f=fresh(); f.stars=S.stars+g; f.seasons=S.seasons+1; f.total=S.total; f.buy=S.buy; f.seen=true; f.goal=S.goal; f.rating=S.rating; f.parades=S.parades; f.boostCd=S.boostCd; f.chests=S.chests; f.chestT=S.chestT; f.cards=S.cards; f.planes=S.planes; f.music=S.music; f.sfx=S.sfx; f.day=S.day; f.streak=S.streak; f.gfx=S.gfx; f.night=S.night; f.glass=S.glass; f.mg=S.mg; f.flow=S.flow; f.cz=S.cz; f.price=S.price; f.invR=S.invR; f.tuto=S.tuto; f.name=S.name; f.friends=S.friends; f.best=S.best; f.fgift=S.fgift; f.inv=S.inv; S=f; resetSim(); save(); closeSheet(); home(); }); }};
+        const f=fresh(); f.stars=S.stars+g; f.seasons=S.seasons+1; f.total=S.total; f.buy=S.buy; f.seen=true; f.goal=S.goal; f.rating=S.rating; f.parades=S.parades; f.boostCd=S.boostCd; f.chests=S.chests; f.chestT=S.chestT; f.cards=S.cards; f.planes=S.planes; f.music=S.music; f.sfx=S.sfx; f.day=S.day; f.streak=S.streak; f.gfx=S.gfx; f.night=S.night; f.glass=S.glass; f.mg=S.mg; f.flow=S.flow; f.cz=S.cz; f.price=S.price; f.invR=S.invR; f.inv=S.inv; f.ctl=2; f.tuto=S.tuto; f.name=S.name; f.friends=S.friends; f.best=S.best; f.fgift=S.fgift; f.inv=S.inv; S=f; resetSim(); save(); closeSheet(); home(); }); }};
 }
 const SHEETS={
   park:  {t:'Parking', rows:()=>['cap','etage','lots','road'].map(upRow), foot:"Le parking principal est limité à 56 places par niveau : construis des étages (jusqu'à 4) et des parkings annexes de l'autre côté de la route (28 places par niveau chacun). Si le parking est complet, les voitures font demi-tour et la satisfaction baisse."},
@@ -2285,8 +2292,8 @@ const SHEETS={
   friends:{t:'Amis', rows:()=>friendRows(), foot:"Le jeu n'a pas de serveur : chaque ami t'envoie son lien (ou son code) et tu l'ajoutes ici. Pour mettre à jour le classement, renvoyez-vous vos liens. Un cadeau par ami et par jour, 3 au maximum."},
   arcade:{t:"Salle d'arcade", rows:()=>['tir','memo','roue'].map(arcadeRow), foot:"Trois mini-jeux pour gagner de l'argent, des coffres et des sabliers. Les gains dépendent des revenus de ton parc."},
   settings:{t:'Paramètres', rows:()=>[
-      toggleRow('invR','🔄','Rotation inversée','Activé : la vue tourne dans le sens inverse du geste à deux doigts et du bouton 🔄'),
-      toggleRow('inv','🕹️','Déplacement inversé','Activé : la caméra avance dans le sens du doigt. Coupé : la carte suit le doigt'),
+      toggleRow('inv','🕹️','Déplacement inversé (réglage normal)','Activé : la caméra avance dans le sens du doigt. Coupé : la carte suit le doigt'),
+      toggleRow('invR','🔄','Rotation inversée','Coupé par défaut. Activé : la vue tourne dans le sens inverse du geste à deux doigts et du bouton 🔄'),
       toggleRow('music','🎵','Musique','Petite valse de fête foraine'),
       toggleRow('sfx','🔊','Bruitages',"Cris dans les manèges, chasses d'eau, caisses, avion, ambiance du parc"),
       {ico:'🖥️', name:()=>'Qualité graphique', sub:()=>'Auto baisse la finesse de l\'image si le jeu ralentit', note:()=>'', btn:()=>({label:{auto:'Auto',high:'Haute',low:'Basse'}[S.gfx], cost:'toucher pour changer', ok:true}),
